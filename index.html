@@ -171,36 +171,56 @@
           iframe.referrerPolicy = "no-referrer";
           iframe.id = `stream-iframe-${index}`;
           
+          // Estado inicial de audio
+          let isMuted = localStorage.getItem(`stream-${index}-muted`) === 'true';
+          
+          // Preparar URL inicial con mute si es necesario
+          let initialUrl = url;
+          if (isMuted && (initialUrl.includes('youtube.com') || initialUrl.includes('youtube-nocookie.com'))) {
+            initialUrl = initialUrl.replace('mute=0', 'mute=1');
+            if (!initialUrl.includes('mute=')) {
+              initialUrl += initialUrl.includes('?') ? '&mute=1' : '?mute=1';
+            }
+          }
+          iframe.src = initialUrl;
+          
           // Botón de audio (silencio/encendido)
           const audioBtn = document.createElement('button');
           audioBtn.id = `audio-btn-${index}`;
-          audioBtn.className = "absolute bottom-4 right-4 z-40 bg-black/70 hover:bg-black/90 text-white p-3 rounded-full opacity-70 hover:opacity-100 transition-all backdrop-blur-sm shadow-lg";
-          audioBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>`;
+          audioBtn.className = "absolute bottom-4 right-4 z-40 bg-black/70 hover:bg-black/90 text-white p-4 rounded-full opacity-90 hover:opacity-100 transition-all backdrop-blur-sm shadow-lg";
+          audioBtn.style.fontSize = '24px';
           
-          let isMuted = false;
+          // Función para actualizar el icono
+          const updateAudioIcon = () => {
+            if (isMuted) {
+              audioBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>`;
+              audioBtn.style.backgroundColor = 'rgba(239, 68, 68, 0.9)';
+            } else {
+              audioBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>`;
+              audioBtn.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+            }
+          };
+          
+          updateAudioIcon();
+          
           audioBtn.addEventListener('click', () => {
             isMuted = !isMuted;
-            const iframe = document.getElementById(`stream-iframe-${index}`);
+            updateAudioIcon();
+            localStorage.setItem(`stream-${index}-muted`, isMuted);
             
-            if (isMuted) {
-              // Actualizar URL para silenciar (solo funciona para YouTube y Twitch que conozcamos)
-              let newSrc = iframe.src;
-              if (newSrc.includes('youtube.com') || newSrc.includes('youtube-nocookie.com')) {
+            // Actualizar URL del iframe para cambiar el estado de mute
+            const iframe = document.getElementById(`stream-iframe-${index}`);
+            let newSrc = iframe.src;
+            if (newSrc.includes('youtube.com') || newSrc.includes('youtube-nocookie.com')) {
+              if (isMuted) {
                 newSrc = newSrc.replace('mute=0', 'mute=1');
                 if (!newSrc.includes('mute=')) {
                   newSrc += newSrc.includes('?') ? '&mute=1' : '?mute=1';
                 }
-              }
-              iframe.src = newSrc;
-              audioBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>`;
-            } else {
-              // Actualizar URL para activar audio
-              let newSrc = iframe.src;
-              if (newSrc.includes('youtube.com') || newSrc.includes('youtube-nocookie.com')) {
+              } else {
                 newSrc = newSrc.replace('mute=1', 'mute=0');
               }
               iframe.src = newSrc;
-              audioBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>`;
             }
           });
           
