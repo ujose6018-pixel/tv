@@ -3,7 +3,6 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' https: data: blob:; img-src 'self' data: https:; frame-src 'self' https:; object-src 'none'; base-uri 'self';">
   <title>MultiStream TV</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
@@ -170,10 +169,43 @@
           iframe.allowFullscreen = true;
           iframe.loading = "lazy";
           iframe.referrerPolicy = "no-referrer";
-          // Permisos necesarios para reproducción sin popups no deseados
-          iframe.sandbox = "allow-scripts allow-same-origin allow-forms allow-presentation allow-fullscreen allow-popups";
+          iframe.id = `stream-iframe-${index}`;
+          
+          // Botón de audio (silencio/encendido)
+          const audioBtn = document.createElement('button');
+          audioBtn.id = `audio-btn-${index}`;
+          audioBtn.className = "absolute bottom-4 right-4 z-40 bg-black/70 hover:bg-black/90 text-white p-3 rounded-full opacity-70 hover:opacity-100 transition-all backdrop-blur-sm shadow-lg";
+          audioBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>`;
+          
+          let isMuted = false;
+          audioBtn.addEventListener('click', () => {
+            isMuted = !isMuted;
+            const iframe = document.getElementById(`stream-iframe-${index}`);
+            
+            if (isMuted) {
+              // Actualizar URL para silenciar (solo funciona para YouTube y Twitch que conozcamos)
+              let newSrc = iframe.src;
+              if (newSrc.includes('youtube.com') || newSrc.includes('youtube-nocookie.com')) {
+                newSrc = newSrc.replace('mute=0', 'mute=1');
+                if (!newSrc.includes('mute=')) {
+                  newSrc += newSrc.includes('?') ? '&mute=1' : '?mute=1';
+                }
+              }
+              iframe.src = newSrc;
+              audioBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>`;
+            } else {
+              // Actualizar URL para activar audio
+              let newSrc = iframe.src;
+              if (newSrc.includes('youtube.com') || newSrc.includes('youtube-nocookie.com')) {
+                newSrc = newSrc.replace('mute=1', 'mute=0');
+              }
+              iframe.src = newSrc;
+              audioBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>`;
+            }
+          });
           
           div.appendChild(iframe);
+          div.appendChild(audioBtn);
           videoContainer.appendChild(div);
         });
 
