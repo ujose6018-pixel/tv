@@ -85,9 +85,9 @@
        ========================================== -->
   <div id="viewer-view" class="fixed inset-0 bg-black flex-col md:flex-row overflow-hidden w-full h-full hidden">
     <!-- Botón flotante para pantalla completa -->
-    <button id="btn-fullscreen" class="absolute top-4 left-4 z-50 bg-black/60 hover:bg-black/90 text-white p-3 rounded-full opacity-50 hover:opacity-100 transition-opacity backdrop-blur-sm shadow-lg flex items-center gap-2 group" title="Poner en Pantalla Completa">
-      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
-      <span class="hidden group-hover:inline font-medium text-sm pr-2">Pantalla Completa</span>
+    <button id="btn-fullscreen" class="absolute top-4 left-4 z-50 bg-black/60 hover:bg-black/90 text-white p-3 rounded-full opacity-50 hover:opacity-100 transition-opacity backdrop-blur-sm shadow-lg flex items-center gap-2 group" title="Poner/Salir de Pantalla Completa">
+      <svg id="icon-fullscreen" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+      <span id="text-fullscreen" class="hidden group-hover:inline font-medium text-sm pr-2">Pantalla Completa</span>
     </button>
 
     <div id="video-container" class="w-full h-full flex flex-col md:flex-row">
@@ -105,10 +105,10 @@
         if (!url) return '';
         let processedUrl = url.trim();
         
-        // YouTube normal o YouTu.be
+        // YouTube normal o YouTu.be (usando youtube-nocookie para privacidad)
         const ytMatch = processedUrl.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i);
         if (ytMatch && ytMatch[1]) {
-          return `https://www.youtube.com/embed/${ytMatch[1]}?autoplay=1&mute=0`;
+          return `https://www.youtube-nocookie.com/embed/${ytMatch[1]}?autoplay=1&mute=0&rel=0&modestbranding=1`;
         }
 
         // Twitch
@@ -134,6 +134,10 @@
       const iconCopy = document.getElementById('icon-copy');
       const videoContainer = document.getElementById('video-container');
       const btnFullscreen = document.getElementById('btn-fullscreen');
+
+      // Bloquear ventanas emergentes y popups
+      window.open = function() { return null; };
+      window.addEventListener('beforeunload', (e) => e.preventDefault());
 
       // 1. Detectar modo (Admin o Visor) leyendo la URL
       const params = new URLSearchParams(window.location.search);
@@ -163,9 +167,12 @@
           iframe.frameBorder = "0";
           iframe.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture";
           iframe.allowFullscreen = true;
+          iframe.loading = "lazy";
+          iframe.referrerPolicy = "no-referrer";
+          iframe.sandbox = "allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation";
           
           div.appendChild(iframe);
-          videoContainer.appendChild(videoContainer.firstChild ? div : div);
+          videoContainer.appendChild(div);
         });
 
       } else {
@@ -232,16 +239,51 @@
       }
 
       // Funcionalidad de Pantalla Completa (TV)
+      const iconFullscreen = document.getElementById('icon-fullscreen');
+      const textFullscreen = document.getElementById('text-fullscreen');
+
+      const updateFullscreenUI = () => {
+        const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement;
+        
+        if (isFullscreen) {
+          // Estamos en pantalla completa: mostrar icono de salida
+          iconFullscreen.innerHTML = '<path d="M8 3v3a2 2 0 0 1-2 2H3"/><path d="M21 8h-3a2 2 0 0 1-2-2V3"/><path d="M3 16h3a2 2 0 0 1 2 2v3"/><path d="M16 21v-3a2 2 0 0 1 2-2h3"/>';
+          textFullscreen.textContent = 'Salir';
+        } else {
+          // No estamos en pantalla completa: mostrar icono de entrada
+          iconFullscreen.innerHTML = '<path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/>';
+          textFullscreen.textContent = 'Pantalla Completa';
+        }
+      };
+
       btnFullscreen.addEventListener('click', () => {
         const elem = viewerView;
-        if (elem.requestFullscreen) {
-          elem.requestFullscreen();
-        } else if (elem.webkitRequestFullscreen) { /* Safari */
-          elem.webkitRequestFullscreen();
-        } else if (elem.msRequestFullscreen) { /* IE11 */
-          elem.msRequestFullscreen();
+        
+        if (document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement) {
+          // Salir de pantalla completa
+          if (document.exitFullscreen) {
+            document.exitFullscreen();
+          } else if (document.webkitExitFullscreen) {
+            document.webkitExitFullscreen();
+          } else if (document.msExitFullscreen) {
+            document.msExitFullscreen();
+          }
+        } else {
+          // Entrar en pantalla completa
+          if (elem.requestFullscreen) {
+            elem.requestFullscreen();
+          } else if (elem.webkitRequestFullscreen) {
+            elem.webkitRequestFullscreen();
+          } else if (elem.msRequestFullscreen) {
+            elem.msRequestFullscreen();
+          }
         }
       });
+
+      // Escuchar cambios de estado de pantalla completa
+      document.addEventListener('fullscreenchange', updateFullscreenUI);
+      document.addEventListener('webkitfullscreenchange', updateFullscreenUI);
+      document.addEventListener('msfullscreenchange', updateFullscreenUI);
     });
   </script>
 </body>
