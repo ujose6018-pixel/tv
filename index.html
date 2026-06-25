@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' https: data: blob:; img-src 'self' data: https:; frame-src 'self' https:; object-src 'none'; base-uri 'self';">
   <title>MultiStream TV</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
@@ -169,7 +170,8 @@
           iframe.allowFullscreen = true;
           iframe.loading = "lazy";
           iframe.referrerPolicy = "no-referrer";
-          iframe.sandbox = "allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation";
+          // Permisos necesarios para reproducción sin popups no deseados
+          iframe.sandbox = "allow-scripts allow-same-origin allow-forms allow-presentation allow-fullscreen allow-popups";
           
           div.appendChild(iframe);
           videoContainer.appendChild(div);
