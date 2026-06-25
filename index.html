@@ -410,7 +410,7 @@
             const expiresAt = new Date(link.expiresAt.seconds * 1000);
             const isExpired = new Date() > expiresAt;
             const timeLeft = expiresAt - new Date();
-            const hoursLeft = Math.max(0, Math.floor(timeLeft / (1000 * 60 * 60));
+            const hoursLeft = Math.max(0, Math.floor(timeLeft / (1000 * 60 * 60)));
             const daysLeft = Math.floor(hoursLeft / 24);
             
             return `
