@@ -7,7 +7,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
-    import { getFirestore, collection, addDoc, getDocs, onSnapshot } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, getDocs, onSnapshot, query, orderBy, doc, updateDoc } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
     
     const firebaseConfig = {
       apiKey: "AIzaSyAp1IAukg9FGiOHGsRvvapN6QYzLOYDrOY",
@@ -22,143 +22,260 @@
     const db = getFirestore(app);
     
     window.firebaseDB = db;
-    window.firebaseCollections = { collection, addDoc, getDocs, onSnapshot };
+    window.firebaseCollections = { collection, addDoc, getDocs, onSnapshot, query, orderBy };
   </script>
   <style>
     .hidden { display: none !important; }
-    .world-cup-gradient {
-      background: linear-gradient(135deg, #009639 0%, #007A33 50%, #004D1F 100%);
+    
+    @keyframes pulse-glow {
+      0%, 100% { box-shadow: 0 0 20px rgba(251, 191, 36, 0.4); }
+      50% { box-shadow: 0 0 40px rgba(251, 191, 36, 0.8); }
     }
-    .world-cup-text {
-      background: linear-gradient(90deg, #FFD700 0%, #FFA500 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
+    
+    @keyframes float {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-10px); }
     }
-    .card-shadow {
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+    
+    @keyframes gradient-shift {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+    
+    .pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
+    .float-animation { animation: float 3s ease-in-out infinite; }
+    .gradient-bg {
+      background: linear-gradient(-45deg, #0f172a, #1e293b, #0f172a, #1e293b);
+      background-size: 400% 400%;
+      animation: gradient-shift 15s ease infinite;
+    }
+    .gold-gradient {
+      background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 50%, #fcd34d 100%);
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #059669 0%, #10b981 50%, #34d399 100%);
+      transition: all 0.3s ease;
+    }
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #047857 0%, #059669 50%, #10b981 100%);
+      transform: translateY(-2px);
+      box-shadow: 0 10px 30px rgba(5, 150, 105, 0.4);
+    }
+    .btn-gold {
+      background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 50%, #fcd34d 100%);
+      transition: all 0.3s ease;
+    }
+    .btn-gold:hover {
+      background: linear-gradient(135deg, #d97706 0%, #f59e0b 50%, #fbbf24 100%);
+      transform: translateY(-2px);
+      box-shadow: 0 10px 30px rgba(245, 158, 11, 0.4);
+    }
+    .card-glow {
+      box-shadow: 0 25px 70px rgba(0, 0, 0, 0.5);
+    }
+    .input-focus:focus {
+      box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.3);
     }
   </style>
 </head>
-<body class="bg-slate-950 text-white min-h-screen w-full font-sans selection:bg-emerald-500/30">
+<body class="gradient-bg text-white min-h-screen w-full font-sans selection:bg-emerald-500/50">
 
   <!-- ==========================================
        VISTA DEL ADMINISTRADOR (PC/Móvil)
        ========================================== -->
   <div id="admin-view" class="min-h-screen flex flex-col items-center py-12 px-4 sm:px-6 hidden">
-    <div class="w-full max-w-3xl">
+    <div class="w-full max-w-4xl">
       
-      <div class="text-center mb-10">
-        <div class="flex items-center justify-center gap-4 mb-3">
-          <div class="w-20 h-20 world-cup-gradient rounded-2xl flex items-center justify-center shadow-xl">
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-yellow-400" viewBox="0 0 24 24" fill="currentColor">
+      <div class="text-center mb-12">
+        <div class="flex items-center justify-center gap-4 mb-5">
+          <div class="w-24 h-24 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-3xl flex items-center justify-center shadow-2xl float-animation">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-14 h-14 text-slate-900" viewBox="0 0 24 24" fill="currentColor">
               <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
             </svg>
           </div>
         </div>
-        <h1 class="text-4xl font-black world-cup-text">TV MUNDIAL 2026</h1>
-        <p class="text-emerald-300 mt-2 text-lg font-semibold">MultiStream - Ver partidos simultáneos</p>
+        <h1 class="text-5xl md:text-6xl font-black bg-gradient-to-r from-yellow-300 via-orange-400 to-yellow-500 bg-clip-text text-transparent">
+          TV MUNDIAL 2026
+        </h1>
+        <p class="text-emerald-300 mt-4 text-xl font-semibold">⚽ MultiStream - Ver partidos simultáneos</p>
       </div>
 
-      <div class="bg-slate-900 rounded-3xl card-shadow border border-emerald-800/50 overflow-hidden">
-        <div class="p-8 space-y-8">
-          
-          <div class="bg-emerald-950/40 border border-emerald-600/40 rounded-2xl p-6 flex gap-4">
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-yellow-400 shrink-0 mt-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="10"/>
-              <path d="M12 16v-4"/><path d="M12 8h.01"/>
-            </svg>
-            <p class="text-emerald-100">
-              Selecciona streams guardados del menú o pega nuevos enlaces para guardarlos.
-            </p>
-          </div>
-
-          <!-- Stream 1 -->
-          <div class="space-y-4">
-            <label class="block text-sm font-bold text-emerald-300 flex items-center gap-2">
-              <span class="w-8 h-8 bg-yellow-500 text-slate-900 rounded-lg flex items-center justify-center font-black text-lg">1</span>
-              Stream 1 (Izquierda / Arriba)
-            </label>
-            
-            <div class="flex flex-col gap-3">
-              <select id="stream1-select" class="w-full bg-slate-800 border border-emerald-700 rounded-xl px-5 py-4 text-white text-lg focus:outline-none focus:ring-3 focus:ring-emerald-500 transition-all cursor-pointer">
-                <option value="">-- Selecciona un stream guardado --</option>
-              </select>
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Columna Principal - Generar Enlaces -->
+        <div class="lg:col-span-2">
+          <div class="bg-slate-900/90 backdrop-blur-xl rounded-3xl card-glow border border-emerald-500/30 overflow-hidden">
+            <div class="p-8 space-y-8">
               
+              <div class="bg-gradient-to-r from-emerald-900/40 to-teal-900/40 border border-emerald-500/40 rounded-2xl p-6 flex gap-4">
+                <div class="w-12 h-12 bg-yellow-500/20 rounded-2xl flex items-center justify-center shrink-0">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7 text-yellow-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M12 16v-4"/><path d="M12 8h.01"/>
+                  </svg>
+                </div>
+                <div class="flex-1">
+                  <h3 class="text-lg font-bold text-emerald-200 mb-1">Crea tus enlaces de partidos</h3>
+                  <p class="text-emerald-100/80 text-sm">Selecciona streams guardados o pega nuevos enlaces</p>
+                </div>
+              </div>
+
+              <!-- Stream 1 -->
+              <div class="space-y-4">
+                <div class="flex items-center gap-3 mb-2">
+                  <div class="w-10 h-10 bg-gradient-to-br from-yellow-400 to-orange-500 text-slate-900 rounded-xl flex items-center justify-center font-black text-xl">1</div>
+                  <h3 class="text-lg font-bold text-yellow-300">Stream Principal (Izquierda/Arriba)</h3>
+                </div>
+                
+                <div class="space-y-3">
+                  <select id="stream1-select" class="w-full bg-slate-800 border-2 border-emerald-600/50 rounded-2xl px-5 py-4 text-white text-lg focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-500/20 transition-all cursor-pointer">
+                    <option value="">-- 📺 Selecciona un stream guardado --</option>
+                  </select>
+                  
+                  <div class="flex flex-col sm:flex-row gap-3">
+                    <input id="input1" type="text" placeholder="🔗 O pega un nuevo enlace..." class="flex-1 bg-slate-800 border border-slate-600 rounded-2xl px-5 py-4 text-white placeholder-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 transition-all">
+                    <input id="input1-title" type="text" placeholder="📝 Título (ej: Argentina vs México)" class="w-full sm:w-64 bg-slate-800 border border-slate-600 rounded-2xl px-5 py-4 text-white placeholder-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 transition-all">
+                  </div>
+                  
+                  <button id="save-stream1" class="btn-primary text-white font-bold py-4 px-8 rounded-2xl shadow-lg transition-all flex items-center justify-center gap-3 w-full sm:w-auto">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M19 21H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>
+                    </svg>
+                    💾 Guardar Stream
+                  </button>
+                </div>
+              </div>
+
+              <!-- Stream 2 -->
+              <div class="space-y-4 pt-6 border-t border-slate-700">
+                <div class="flex items-center gap-3 mb-2">
+                  <div class="w-10 h-10 bg-gradient-to-br from-cyan-400 to-blue-500 text-slate-900 rounded-xl flex items-center justify-center font-black text-xl">2</div>
+                  <h3 class="text-lg font-bold text-cyan-300">Stream Secundario (Derecha/Abajo) <span class="text-slate-400 font-normal text-base">- Opcional</span></h3>
+                </div>
+                
+                <div class="space-y-3">
+                  <select id="stream2-select" class="w-full bg-slate-800 border-2 border-cyan-600/50 rounded-2xl px-5 py-4 text-white text-lg focus:outline-none focus:border-cyan-400 focus:ring-4 focus:ring-cyan-500/20 transition-all cursor-pointer">
+                    <option value="">-- 📺 Selecciona un stream guardado --</option>
+                  </select>
+                  
+                  <div class="flex flex-col sm:flex-row gap-3">
+                    <input id="input2" type="text" placeholder="🔗 O pega un nuevo enlace..." class="flex-1 bg-slate-800 border border-slate-600 rounded-2xl px-5 py-4 text-white placeholder-slate-400 focus:outline-none focus:border-cyan-500 focus:ring-4 focus:ring-cyan-500/20 transition-all">
+                    <input id="input2-title" type="text" placeholder="📝 Título (ej: Brasil vs España)" class="w-full sm:w-64 bg-slate-800 border border-slate-600 rounded-2xl px-5 py-4 text-white placeholder-slate-400 focus:outline-none focus:border-cyan-500 focus:ring-4 focus:ring-cyan-500/20 transition-all">
+                  </div>
+                  
+                  <button id="save-stream2" class="btn-primary text-white font-bold py-4 px-8 rounded-2xl shadow-lg transition-all flex items-center justify-center gap-3 w-full sm:w-auto">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M19 21H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>
+                    </svg>
+                    💾 Guardar Stream
+                  </button>
+                </div>
+              </div>
+
+              <!-- Nombre del Enlace -->
+              <div class="space-y-4 pt-4">
+                <div class="flex items-center gap-3 mb-2">
+                  <div class="w-10 h-10 bg-gradient-to-br from-pink-400 to-rose-500 text-slate-900 rounded-xl flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                    </svg>
+                  </div>
+                  <h3 class="text-lg font-bold text-pink-300">Nombre del Enlace</h3>
+                </div>
+                <input id="link-name" type="text" placeholder="Ej: Partido de hoy - Canales 1 y 2" class="w-full bg-slate-800 border-2 border-pink-600/50 rounded-2xl px-5 py-4 text-white placeholder-slate-400 text-lg focus:outline-none focus:border-pink-400 focus:ring-4 focus:ring-pink-500/20 transition-all">
+              </div>
+
+              <!-- Expiración -->
+              <div class="space-y-4 pt-4">
+                <div class="flex items-center gap-3 mb-2">
+                  <div class="w-10 h-10 bg-gradient-to-br from-purple-400 to-pink-500 text-slate-900 rounded-xl flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                    </svg>
+                  </div>
+                  <h3 class="text-lg font-bold text-purple-300">Expiración del Enlace</h3>
+                </div>
+                <select id="expiration-select" class="w-full bg-slate-800 border-2 border-purple-600/50 rounded-2xl px-5 py-4 text-white text-lg focus:outline-none focus:border-purple-400 focus:ring-4 focus:ring-purple-500/20 transition-all cursor-pointer">
+                  <option value="1">⏱️ 1 Hora</option>
+                  <option value="6">⏱️ 6 Horas</option>
+                  <option value="24" selected>📅 1 Día</option>
+                  <option value="72">📅 3 Días</option>
+                  <option value="168">📅 7 Días</option>
+                </select>
+              </div>
+
               <div class="flex gap-3">
-                <input id="input1" type="text" placeholder="O pega un nuevo enlace: https://ejemplo.com/stream" class="flex-1 bg-slate-800 border border-slate-600 rounded-xl px-5 py-4 text-white placeholder-slate-400 focus:outline-none focus:ring-3 focus:ring-emerald-500 transition-all">
-                <input id="input1-title" type="text" placeholder="Título (ej: Argentina vs México)" class="w-56 bg-slate-800 border border-slate-600 rounded-xl px-4 py-4 text-white placeholder-slate-400 focus:outline-none focus:ring-3 focus:ring-emerald-500 transition-all">
+                <button id="btn-generate" class="flex-1 btn-gold text-slate-900 font-black text-xl py-6 px-8 rounded-3xl shadow-xl transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed pulse-glow" disabled>
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-9 h-9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                  </svg>
+                  🚀 Generar Enlace y Guardar
+                </button>
+                <button id="btn-cancel-edit" class="px-6 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded-3xl shadow-lg transition-all hidden">
+                  ✖️ Cancelar
+                </button>
+              </div>
+
+              <!-- Resultado -->
+              <div id="result-box" class="mt-6 p-8 bg-gradient-to-br from-yellow-900/30 to-orange-900/30 rounded-3xl border border-yellow-500/40 hidden">
+                <h3 class="text-xl font-bold text-yellow-300 mb-5 flex items-center gap-3">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M20 6 9 17l-5-5"/>
+                  </svg>
+                  ✨ ¡Enlace generado con éxito!
+                </h3>
+                
+                <div class="flex flex-col sm:flex-row gap-3 mb-6">
+                  <input id="url-output" readonly class="flex-1 bg-slate-900 border border-yellow-600/50 rounded-2xl px-5 py-4 text-yellow-100 text-sm focus:outline-none truncate">
+                </div>
+                
+                <div class="flex flex-col sm:flex-row gap-3">
+                  <button id="btn-copy" class="flex-1 flex items-center justify-center gap-3 px-6 py-4 rounded-2xl font-bold transition-all bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-lg">
+                    <svg id="icon-copy" xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+                    </svg>
+                    <span id="text-copy">📋 Copiar</span>
+                  </button>
+                  <button id="btn-whatsapp" class="flex-1 flex items-center justify-center gap-3 px-6 py-4 rounded-2xl font-bold transition-all bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white shadow-lg">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.488-.492-.67-.5h-.572c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/>
+                    </svg>
+                    💬 Compartir por WhatsApp
+                  </button>
+                </div>
               </div>
               
-              <button id="save-stream1" class="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M19 21H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>
-                </svg>
-                Guardar Stream 1
-              </button>
             </div>
           </div>
+        </div>
 
-          <!-- Stream 2 -->
-          <div class="space-y-4 pt-4 border-t border-slate-700">
-            <label class="block text-sm font-bold text-emerald-300 flex items-center gap-2">
-              <span class="w-8 h-8 bg-yellow-500 text-slate-900 rounded-lg flex items-center justify-center font-black text-lg">2</span>
-              Stream 2 (Derecha / Abajo) <span class="text-slate-400 font-normal text-base">- Opcional</span>
-            </label>
-            
-            <div class="flex flex-col gap-3">
-              <select id="stream2-select" class="w-full bg-slate-800 border border-emerald-700 rounded-xl px-5 py-4 text-white text-lg focus:outline-none focus:ring-3 focus:ring-emerald-500 transition-all cursor-pointer">
-                <option value="">-- Selecciona un stream guardado --</option>
-              </select>
-              
-              <div class="flex gap-3">
-                <input id="input2" type="text" placeholder="O pega un nuevo enlace: https://ejemplo.com/stream2" class="flex-1 bg-slate-800 border border-slate-600 rounded-xl px-5 py-4 text-white placeholder-slate-400 focus:outline-none focus:ring-3 focus:ring-emerald-500 transition-all">
-                <input id="input2-title" type="text" placeholder="Título (ej: Brasil vs España)" class="w-56 bg-slate-800 border border-slate-600 rounded-xl px-4 py-4 text-white placeholder-slate-400 focus:outline-none focus:ring-3 focus:ring-emerald-500 transition-all">
+        <!-- Columna Lateral - Mis Enlaces -->
+        <div class="lg:col-span-1">
+          <div class="bg-slate-900/90 backdrop-blur-xl rounded-3xl card-glow border border-blue-500/30 overflow-hidden sticky top-8">
+            <div class="p-6 border-b border-blue-500/20 bg-gradient-to-r from-blue-900/40 to-indigo-900/40">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-blue-500/20 rounded-xl flex items-center justify-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M4 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6z"/><polyline points="8 10 12 14 16 10"/>
+                  </svg>
+                </div>
+                <div>
+                  <h3 class="text-xl font-bold text-blue-200">Mis Enlaces Generados</h3>
+                  <p class="text-blue-100/70 text-xs">Enlaces con expiración</p>
+                </div>
               </div>
-              
-              <button id="save-stream2" class="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M19 21H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>
+            </div>
+            <div id="links-container" class="p-4 max-h-[600px] overflow-y-auto space-y-3">
+              <div class="text-center text-slate-400 py-12">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-16 h-16 mx-auto mb-4 opacity-50" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                  <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
                 </svg>
-                Guardar Stream 2
-              </button>
+                <p>No hay enlaces generados aún</p>
+              </div>
             </div>
           </div>
-
-          <div class="pt-4">
-            <button id="btn-generate" class="w-full bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-slate-900 font-black text-xl py-5 px-6 rounded-2xl shadow-xl transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
-              <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-              </svg>
-              Generar Enlace para la TV ⚽
-            </button>
-          </div>
-
-          <!-- Resultado -->
-          <div id="result-box" class="mt-6 p-8 bg-slate-800 rounded-2xl border border-yellow-500/40 hidden">
-            <h3 class="text-lg font-bold text-yellow-400 mb-4 flex items-center gap-2">
-              <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M20 6 9 17l-5-5"/>
-              </svg>
-              ¡Listo para ver los partidos!
-            </h3>
-            
-            <div class="flex flex-col sm:flex-row gap-3">
-              <input id="url-output" readonly class="flex-1 bg-slate-900 border border-slate-600 rounded-xl px-4 py-3 text-slate-300 text-sm focus:outline-none truncate">
-              <button id="btn-copy" class="flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold transition-all bg-yellow-500 hover:bg-yellow-400 text-slate-900">
-                <svg id="icon-copy" xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
-                </svg>
-                <span id="text-copy">Copiar URL</span>
-              </button>
-            </div>
-            
-            <p class="mt-5 text-sm text-slate-400 text-center">
-              Copia esta URL y ábrela en el navegador web de tu Smart TV
-            </p>
-          </div>
-          
         </div>
       </div>
     </div>
@@ -168,8 +285,8 @@
        VISTA DEL VISOR (TV)
        ========================================== -->
   <div id="viewer-view" class="fixed inset-0 bg-black flex-col md:flex-row overflow-hidden w-full h-full hidden">
-    <button id="btn-fullscreen" class="absolute top-4 left-4 z-50 bg-black/70 hover:bg-black/90 text-white p-4 rounded-2xl opacity-70 hover:opacity-100 transition-opacity backdrop-blur-xl shadow-2xl flex items-center gap-3 group">
-      <svg id="icon-fullscreen" xmlns="http://www.w3.org/2000/svg" class="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <button id="btn-fullscreen" class="absolute top-4 left-4 z-50 bg-black/80 hover:bg-black/95 text-white p-4 rounded-2xl opacity-80 hover:opacity-100 transition-all backdrop-blur-xl shadow-2xl flex items-center gap-3 group">
+      <svg id="icon-fullscreen" xmlns="http://www.w3.org/2000/svg" class="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/>
       </svg>
       <span id="text-fullscreen" class="hidden group-hover:inline font-bold text-lg pr-2">Pantalla Completa</span>
@@ -180,18 +297,39 @@
   </div>
 
   <!-- ==========================================
+       VISTA DE ENLACE EXPIRADO
+       ========================================== -->
+  <div id="expired-view" class="fixed inset-0 bg-gradient-to-br from-red-900 to-slate-950 flex items-center justify-center hidden">
+    <div class="text-center p-12 bg-slate-900/90 backdrop-blur-xl rounded-3xl border border-red-500/30 card-glow max-w-md">
+      <div class="w-24 h-24 bg-gradient-to-br from-red-500 to-pink-600 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-2xl">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-14 h-14 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+      </div>
+      <h2 class="text-4xl font-black text-red-400 mb-3">¡Enlace Expirado!</h2>
+      <p class="text-slate-300 text-lg mb-8">Este enlace ha caducado y ya no está disponible</p>
+      <a href="index.html" class="inline-block btn-gold text-slate-900 font-bold text-lg py-4 px-10 rounded-2xl shadow-lg transition-all">
+        🏠 Volver al Inicio
+      </a>
+    </div>
+  </div>
+
+  <!-- ==========================================
        LÓGICA JAVASCRIPT
        ========================================== -->
   <script type="module">
-    import { getFirestore, collection, addDoc, getDocs, onSnapshot } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, getDocs, onSnapshot, query, orderBy, doc, updateDoc } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
     
     document.addEventListener('DOMContentLoaded', async () => {
       const db = getFirestore();
       const streamsCol = collection(db, "streams");
+      const linksCol = collection(db, "generatedLinks");
+      let editingLinkId = null;
       
       // Elementos del DOM
       const adminView = document.getElementById('admin-view');
       const viewerView = document.getElementById('viewer-view');
+      const expiredView = document.getElementById('expired-view');
       const input1 = document.getElementById('input1');
       const input1Title = document.getElementById('input1-title');
       const input2 = document.getElementById('input2');
@@ -200,18 +338,31 @@
       const stream2Select = document.getElementById('stream2-select');
       const saveStream1 = document.getElementById('save-stream1');
       const saveStream2 = document.getElementById('save-stream2');
+      const linkNameInput = document.getElementById('link-name');
+      const expirationSelect = document.getElementById('expiration-select');
       const btnGenerate = document.getElementById('btn-generate');
       const resultBox = document.getElementById('result-box');
       const urlOutput = document.getElementById('url-output');
       const btnCopy = document.getElementById('btn-copy');
       const textCopy = document.getElementById('text-copy');
       const iconCopy = document.getElementById('icon-copy');
+      const btnWhatsapp = document.getElementById('btn-whatsapp');
+      const linksContainer = document.getElementById('links-container');
       const videoContainer = document.getElementById('video-container');
       const btnFullscreen = document.getElementById('btn-fullscreen');
+      const btnCancelEdit = document.getElementById('btn-cancel-edit');
 
       // Bloquear ventanas emergentes
       window.open = function() { return null; };
       window.addEventListener('beforeunload', (e) => e.preventDefault());
+
+      // Función para formatear fecha
+      const formatDate = (date) => {
+        return new Intl.DateTimeFormat('es-ES', {
+          day: '2-digit', month: '2-digit', year: '2-digit',
+          hour: '2-digit', minute: '2-digit'
+        }).format(date);
+      };
 
       // Cargar streams desde Firestore en tiempo real
       const loadStreams = async () => {
@@ -219,24 +370,130 @@
           const streams = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
           
           // Limpiar selects
-          stream1Select.innerHTML = '<option value="">-- Selecciona un stream guardado --</option>';
-          stream2Select.innerHTML = '<option value="">-- Selecciona un stream guardado --</option>';
+          stream1Select.innerHTML = '<option value="">-- 📺 Selecciona un stream guardado --</option>';
+          stream2Select.innerHTML = '<option value="">-- 📺 Selecciona un stream guardado --</option>';
           
           streams.forEach(stream => {
             const option1 = document.createElement('option');
             option1.value = stream.url;
-            option1.textContent = stream.title;
+            option1.textContent = `⚽ ${stream.title}`;
             stream1Select.appendChild(option1);
             
             const option2 = document.createElement('option');
             option2.value = stream.url;
-            option2.textContent = stream.title;
+            option2.textContent = `⚽ ${stream.title}`;
             stream2Select.appendChild(option2);
           });
         });
       };
       
+      // Cargar enlaces generados
+      const loadLinks = async () => {
+        const q = query(linksCol, orderBy('createdAt', 'desc'));
+        onSnapshot(q, (snapshot) => {
+          const links = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          
+          if (links.length === 0) {
+            linksContainer.innerHTML = `
+              <div class="text-center text-slate-400 py-12">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-16 h-16 mx-auto mb-4 opacity-50" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                  <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                </svg>
+                <p>No hay enlaces generados aún</p>
+              </div>
+            `;
+            return;
+          }
+          
+          linksContainer.innerHTML = links.map(link => {
+            const expiresAt = new Date(link.expiresAt.seconds * 1000);
+            const isExpired = new Date() > expiresAt;
+            const timeLeft = expiresAt - new Date();
+            const hoursLeft = Math.max(0, Math.floor(timeLeft / (1000 * 60 * 60));
+            const daysLeft = Math.floor(hoursLeft / 24);
+            
+            return `
+              <div class="group bg-slate-800/80 rounded-2xl border border-slate-700 p-4 hover:border-blue-500/50 transition-all ${isExpired ? 'opacity-50 bg-slate-800/40' : ''}">
+                <div class="flex items-start justify-between mb-3">
+                  <div class="flex-1 min-w-0">
+                    <h4 class="text-sm font-bold text-blue-200 truncate">${link.name || 'Partido'}</h4>
+                    <p class="text-xs text-slate-400 mt-1">Creado: ${formatDate(new Date(link.createdAt.seconds * 1000))}</p>
+                  </div>
+                  <div class="ml-3 shrink-0">
+                    ${isExpired ? 
+                      '<span class="px-2 py-1 bg-red-500/20 text-red-400 text-xs rounded-full font-medium">Expirado</span>' : 
+                      `<span class="px-2 py-1 bg-emerald-500/20 text-emerald-400 text-xs rounded-full font-medium">${daysLeft > 0 ? daysLeft + ' días' : hoursLeft + ' horas'}</span>`
+                    }
+                  </div>
+                </div>
+                <div class="flex gap-2">
+                  <button onclick="loadLinkForEdit('${link.id}')" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white py-2 px-3 rounded-xl text-xs font-bold transition-all">
+                    ✏️ Editar
+                  </button>
+                  <button onclick="navigator.clipboard.writeText('${link.url}').then(() => alert('Enlace copiado!'))" class="flex-1 bg-slate-700 hover:bg-slate-600 text-white py-2 px-3 rounded-xl text-xs font-medium transition-all">
+                    📋 Copiar
+                  </button>
+                  <a href="https://wa.me/?text=${encodeURIComponent('¡Mira los partidos del Mundial! 🏆 ' + link.url)}" target="_blank" class="flex-1 bg-green-600 hover:bg-green-500 text-white py-2 px-3 rounded-xl text-xs font-medium transition-all text-center">
+                    💬 WhatsApp
+                  </a>
+                  <a href="${link.url}" class="flex-1 btn-gold text-slate-900 py-2 px-3 rounded-xl text-xs font-bold transition-all text-center ${isExpired ? 'opacity-50 pointer-events-none' : ''}">
+                    ▶️ Abrir
+                  </a>
+                </div>
+              </div>
+            `;
+          }).join('');
+        });
+      };
+      
       await loadStreams();
+      await loadLinks();
+      
+      // Función para cargar un enlace para editar
+      window.loadLinkForEdit = async (linkId) => {
+        try {
+          const querySnapshot = await getDocs(linksCol);
+          const linkDoc = querySnapshot.docs.find(doc => doc.id === linkId);
+          
+          if (linkDoc) {
+            const linkData = linkDoc.data();
+            editingLinkId = linkId;
+            
+            // Cargar datos en los campos
+            if (linkData.s1) input1.value = decodeURIComponent(linkData.s1);
+            if (linkData.s2) input2.value = decodeURIComponent(linkData.s2);
+            linkNameInput.value = linkData.name || '';
+            
+            // Calcular y seleccionar la expiración original
+            const now = new Date();
+            const expiresAt = new Date(linkData.expiresAt.seconds * 1000);
+            const diffHours = Math.ceil((expiresAt - now) / (1000 * 60 * 60));
+            
+            // Seleccionar la opción más cercana
+            const options = [1, 6, 24, 72, 168];
+            let selectedOption = 24;
+            for (const opt of options) {
+              if (diffHours <= opt) {
+                selectedOption = opt;
+                break;
+              }
+            }
+            expirationSelect.value = selectedOption;
+            
+            // Actualizar botón
+            btnGenerate.innerHTML = '🔄 Actualizar Enlace';
+            btnGenerate.classList.remove('pulse-glow');
+            btnCancelEdit.classList.remove('hidden');
+            
+            // Scroll suave al formulario
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }
+        } catch (e) {
+          console.error('Error cargando enlace para editar:', e);
+          alert('Error al cargar el enlace para editar');
+        }
+      };
 
       // Guardar streams
       saveStream1.addEventListener('click', async () => {
@@ -248,11 +505,13 @@
               createdAt: new Date()
             });
             input1Title.value = '';
-            alert('¡Stream 1 guardado correctamente! ⚽');
+            alert('¡Stream guardado correctamente! ⚽');
           } catch (e) {
             console.error('Error:', e);
             alert('Error al guardar el stream');
           }
+        } else {
+          alert('Por favor completa el enlace y el título');
         }
       });
 
@@ -265,11 +524,13 @@
               createdAt: new Date()
             });
             input2Title.value = '';
-            alert('¡Stream 2 guardado correctamente! ⚽');
+            alert('¡Stream guardado correctamente! ⚽');
           } catch (e) {
             console.error('Error:', e);
             alert('Error al guardar el stream');
           }
+        } else {
+          alert('Por favor completa el enlace y el título');
         }
       });
 
@@ -277,12 +538,14 @@
       stream1Select.addEventListener('change', () => {
         if (stream1Select.value) {
           input1.value = stream1Select.value;
+          checkInputs();
         }
       });
 
       stream2Select.addEventListener('change', () => {
         if (stream2Select.value) {
           input2.value = stream2Select.value;
+          checkInputs();
         }
       });
 
@@ -302,21 +565,64 @@
       stream1Select.addEventListener('change', checkInputs);
       stream2Select.addEventListener('change', checkInputs);
 
-      // 1. Detectar modo (Admin o Visor)
+      // 1. Detectar modo (Admin, Visor o Expirado)
       const params = new URLSearchParams(window.location.search);
       const s1 = params.get('s1');
       const s2 = params.get('s2');
+      const linkId = params.get('linkId');
 
-      if (s1 || s2) {
-        // MODO VISOR (TV)
-        viewerView.classList.remove('hidden');
-        viewerView.classList.add('flex');
-        
+      if (linkId) {
+        // Verificar si el enlace ha expirado
+        try {
+          const docRef = await getDocs(linksCol);
+          const linkDoc = docRef.docs.find(doc => doc.id === linkId);
+          
+          if (linkDoc) {
+            const linkData = linkDoc.data();
+            const expiresAt = new Date(linkData.expiresAt.seconds * 1000);
+            
+            if (new Date() > expiresAt) {
+              expiredView.classList.remove('hidden');
+            } else {
+              // Usar los streams del enlace guardado
+              const streams = [
+                linkData.s1 ? decodeURIComponent(linkData.s1) : null, 
+                linkData.s2 ? decodeURIComponent(linkData.s2) : null
+              ].filter(Boolean);
+              
+              loadViewer(streams);
+            }
+          } else {
+            expiredView.classList.remove('hidden');
+          }
+        } catch (e) {
+          console.error('Error checking link:', e);
+          // Fallback: cargar desde s1/s2
+          const streams = [
+            s1 ? decodeURIComponent(s1) : null, 
+            s2 ? decodeURIComponent(s2) : null
+          ].filter(Boolean);
+          if (streams.length > 0) {
+            loadViewer(streams);
+          } else {
+            adminView.classList.remove('hidden');
+          }
+        }
+      } else if (s1 || s2) {
         const streams = [
           s1 ? decodeURIComponent(s1) : null, 
           s2 ? decodeURIComponent(s2) : null
         ].filter(Boolean);
+        loadViewer(streams);
+      } else {
+        adminView.classList.remove('hidden');
+      }
 
+      // Función para cargar el visor
+      function loadViewer(streams) {
+        viewerView.classList.remove('hidden');
+        viewerView.classList.add('flex');
+        
         const isSplit = streams.length === 2;
 
         streams.forEach((url, index) => {
@@ -363,10 +669,10 @@
           
           const updateAudioIcon = () => {
             if (isMuted) {
-              audioBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="w-10 h-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>`;
+              audioBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="w-10 h-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>`;
               audioBtn.style.backgroundColor = 'rgba(239, 68, 68, 0.9)';
             } else {
-              audioBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="w-10 h-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>`;
+              audioBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="w-10 h-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>`;
               audioBtn.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
             }
           };
@@ -408,51 +714,117 @@
           div.appendChild(audioBtn);
           videoContainer.appendChild(div);
         });
-
-      } else {
-        // MODO ADMINISTRADOR (PC/Móvil)
-        adminView.classList.remove('hidden');
-
-        btnGenerate.addEventListener('click', () => {
-          const baseUrl = window.location.origin + window.location.pathname;
-          const newParams = new URLSearchParams();
-          
-          if (input1.value.trim()) newParams.append('s1', encodeURIComponent(input1.value));
-          if (input2.value.trim()) newParams.append('s2', encodeURIComponent(input2.value));
-          
-          urlOutput.value = `${baseUrl}?${newParams.toString()}`;
-          resultBox.classList.remove('hidden');
-          
-          btnCopy.classList.remove('bg-yellow-400', 'text-white');
-          btnCopy.classList.add('bg-yellow-500', 'text-slate-900');
-          textCopy.textContent = 'Copiar URL';
-          iconCopy.innerHTML = '<rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>';
-        });
-
-        btnCopy.addEventListener('click', () => {
-          const copySuccess = () => {
-            btnCopy.classList.remove('bg-yellow-500');
-            btnCopy.classList.add('bg-green-500');
-            textCopy.textContent = '¡Copiado!';
-            iconCopy.innerHTML = '<path d="M20 6 9 17l-5-5"/>';
-            
-            setTimeout(() => {
-              btnCopy.classList.remove('bg-green-500');
-              btnCopy.classList.add('bg-yellow-500');
-              textCopy.textContent = 'Copiar URL';
-              iconCopy.innerHTML = '<rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>';
-            }, 3000);
-          };
-
-          if (navigator.clipboard && window.isSecureContext) {
-            navigator.clipboard.writeText(urlOutput.value).then(copySuccess);
-          } else {
-            urlOutput.select();
-            document.execCommand('copy');
-            copySuccess();
-          }
-        });
       }
+
+      // Función para resetear el modo de edición
+      const resetEditMode = () => {
+        editingLinkId = null;
+        btnGenerate.innerHTML = `
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-9 h-9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+          </svg>
+          🚀 Generar Enlace y Guardar
+        `;
+        btnGenerate.classList.add('pulse-glow');
+        btnCancelEdit.classList.add('hidden');
+        linkNameInput.value = '';
+      };
+      
+      // Botón de cancelar edición
+      btnCancelEdit.addEventListener('click', resetEditMode);
+      
+      // Generar/Actualizar enlace y guardar
+      btnGenerate.addEventListener('click', async () => {
+        const baseUrl = window.location.origin + window.location.pathname;
+        const newParams = new URLSearchParams();
+        const s1Value = input1.value.trim();
+        const s2Value = input2.value.trim();
+        
+        if (s1Value) newParams.append('s1', encodeURIComponent(s1Value));
+        if (s2Value) newParams.append('s2', encodeURIComponent(s2Value));
+        
+        const fullUrl = `${baseUrl}?${newParams.toString()}`;
+        urlOutput.value = fullUrl;
+        resultBox.classList.remove('hidden');
+        
+        // Guardar en Firestore con expiración
+        const expirationHours = parseInt(expirationSelect.value);
+        const expiresAt = new Date();
+        expiresAt.setHours(expiresAt.getHours() + expirationHours);
+        
+        // Usar nombre manual o generar uno automático
+        let finalLinkName = linkNameInput.value.trim();
+        if (!finalLinkName) {
+          const linkNameParts = [];
+          if (stream1Select.selectedIndex > 0) linkNameParts.push(stream1Select.options[stream1Select.selectedIndex].text.replace('⚽ ', ''));
+          if (stream2Select.selectedIndex > 0) linkNameParts.push(stream2Select.options[stream2Select.selectedIndex].text.replace('⚽ ', ''));
+          finalLinkName = linkNameParts.length > 0 ? linkNameParts.join(' + ') : 'Partido';
+        }
+        
+        try {
+          if (editingLinkId) {
+            // Actualizar documento existente
+            const linkDocRef = doc(db, "generatedLinks", editingLinkId);
+            await updateDoc(linkDocRef, {
+              name: finalLinkName,
+              s1: s1Value || null,
+              s2: s2Value || null,
+              url: fullUrl,
+              expiresAt: expiresAt,
+              expirationHours: expirationHours
+            });
+            alert('Enlace actualizado correctamente!');
+            resetEditMode();
+          } else {
+            // Crear nuevo documento
+            await addDoc(linksCol, {
+              name: finalLinkName,
+              s1: s1Value || null,
+              s2: s2Value || null,
+              url: fullUrl,
+              createdAt: new Date(),
+              expiresAt: expiresAt,
+              expirationHours: expirationHours
+            });
+        } catch (e) {
+          console.error('Error saving link:', e);
+        }
+        
+        btnCopy.classList.remove('bg-green-500');
+        btnCopy.classList.add('bg-gradient-to-r', 'from-blue-600', 'to-indigo-600');
+        textCopy.textContent = '📋 Copiar';
+        iconCopy.innerHTML = '<rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>';
+      });
+
+      btnCopy.addEventListener('click', () => {
+        const copySuccess = () => {
+          btnCopy.classList.remove('bg-gradient-to-r', 'from-blue-600', 'to-indigo-600');
+          btnCopy.classList.add('bg-green-600');
+          textCopy.textContent = '✅ ¡Copiado!';
+          iconCopy.innerHTML = '<path d="M20 6 9 17l-5-5"/>';
+          
+          setTimeout(() => {
+            btnCopy.classList.remove('bg-green-600');
+            btnCopy.classList.add('bg-gradient-to-r', 'from-blue-600', 'to-indigo-600');
+            textCopy.textContent = '📋 Copiar';
+            iconCopy.innerHTML = '<rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>';
+          }, 3000);
+        };
+
+        if (navigator.clipboard && window.isSecureContext) {
+          navigator.clipboard.writeText(urlOutput.value).then(copySuccess);
+        } else {
+          urlOutput.select();
+          document.execCommand('copy');
+          copySuccess();
+        }
+      });
+
+      btnWhatsapp.addEventListener('click', () => {
+        const message = `¡Mira los partidos del Mundial! 🏆⚽\n\n${urlOutput.value}`;
+        window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
+      });
 
       // Funcionalidad de Pantalla Completa
       const iconFullscreen = document.getElementById('icon-fullscreen');
