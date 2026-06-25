@@ -7,7 +7,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
-    import { getFirestore, collection, addDoc, getDocs, onSnapshot, query, orderBy, doc, updateDoc } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, getDocs, onSnapshot, query, orderBy, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
     
     const firebaseConfig = {
       apiKey: "AIzaSyAp1IAukg9FGiOHGsRvvapN6QYzLOYDrOY",
@@ -43,39 +43,101 @@
       100% { background-position: 0% 50%; }
     }
     
+    @keyframes fade-in-up {
+      0% { opacity: 0; transform: translateY(20px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+    
     .pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
     .float-animation { animation: float 3s ease-in-out infinite; }
+    .fade-in-up { animation: fade-in-up 0.5s ease-out; }
+    
     .gradient-bg {
-      background: linear-gradient(-45deg, #0f172a, #1e293b, #0f172a, #1e293b);
+      background: linear-gradient(-45deg, #020617, #0f172a, #020617, #1e293b);
       background-size: 400% 400%;
-      animation: gradient-shift 15s ease infinite;
+      animation: gradient-shift 20s ease infinite;
     }
-    .gold-gradient {
-      background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 50%, #fcd34d 100%);
-    }
+    
     .btn-primary {
       background: linear-gradient(135deg, #059669 0%, #10b981 50%, #34d399 100%);
-      transition: all 0.3s ease;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
+    
     .btn-primary:hover {
       background: linear-gradient(135deg, #047857 0%, #059669 50%, #10b981 100%);
-      transform: translateY(-2px);
-      box-shadow: 0 10px 30px rgba(5, 150, 105, 0.4);
+      transform: translateY(-3px);
+      box-shadow: 0 15px 40px rgba(5, 150, 105, 0.5);
     }
+    
+    .btn-primary:active {
+      transform: translateY(-1px);
+    }
+    
     .btn-gold {
       background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 50%, #fcd34d 100%);
-      transition: all 0.3s ease;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
+    
     .btn-gold:hover {
       background: linear-gradient(135deg, #d97706 0%, #f59e0b 50%, #fbbf24 100%);
-      transform: translateY(-2px);
-      box-shadow: 0 10px 30px rgba(245, 158, 11, 0.4);
+      transform: translateY(-3px);
+      box-shadow: 0 15px 40px rgba(245, 158, 11, 0.6);
     }
+    
+    .btn-gold:active {
+      transform: translateY(-1px);
+    }
+    
     .card-glow {
-      box-shadow: 0 25px 70px rgba(0, 0, 0, 0.5);
+      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(20px);
     }
-    .input-focus:focus {
-      box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.3);
+    
+    .card-hover {
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .card-hover:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+    }
+    
+    input, select {
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    input:focus, select:focus {
+      transform: scale(1.01);
+    }
+    
+    .tab-btn {
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .tab-btn:hover {
+      transform: scale(1.02);
+    }
+    
+    .tab-btn.active {
+      box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+    }
+    
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+    
+    ::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.5);
+      border-radius: 10px;
+    }
+    
+    ::-webkit-scrollbar-thumb {
+      background: linear-gradient(180deg, #10b981, #3b82f6);
+      border-radius: 10px;
+    }
+    
+    ::-webkit-scrollbar-thumb:hover {
+      background: linear-gradient(180deg, #059669, #2563eb);
     }
   </style>
 </head>
@@ -107,115 +169,146 @@
           <div class="bg-slate-900/90 backdrop-blur-xl rounded-3xl card-glow border border-emerald-500/30 overflow-hidden">
             <div class="p-8 space-y-8">
               
-              <div class="bg-gradient-to-r from-emerald-900/40 to-teal-900/40 border border-emerald-500/40 rounded-2xl p-6 flex gap-4">
-                <div class="w-12 h-12 bg-yellow-500/20 rounded-2xl flex items-center justify-center shrink-0">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7 text-yellow-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="12" cy="12" r="10"/>
-                    <path d="M12 16v-4"/><path d="M12 8h.01"/>
-                  </svg>
-                </div>
-                <div class="flex-1">
-                  <h3 class="text-lg font-bold text-emerald-200 mb-1">Crea tus enlaces de partidos</h3>
-                  <p class="text-emerald-100/80 text-sm">Selecciona streams guardados o pega nuevos enlaces</p>
-                </div>
-              </div>
-
-              <!-- Stream 1 -->
-              <div class="space-y-4">
-                <div class="flex items-center gap-3 mb-2">
-                  <div class="w-10 h-10 bg-gradient-to-br from-yellow-400 to-orange-500 text-slate-900 rounded-xl flex items-center justify-center font-black text-xl">1</div>
-                  <h3 class="text-lg font-bold text-yellow-300">Stream Principal (Izquierda/Arriba)</h3>
-                </div>
-                
-                <div class="space-y-3">
-                  <select id="stream1-select" class="w-full bg-slate-800 border-2 border-emerald-600/50 rounded-2xl px-5 py-4 text-white text-lg focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-500/20 transition-all cursor-pointer">
-                    <option value="">-- 📺 Selecciona un stream guardado --</option>
-                  </select>
-                  
-                  <div class="flex flex-col sm:flex-row gap-3">
-                    <input id="input1" type="text" placeholder="🔗 O pega un nuevo enlace..." class="flex-1 bg-slate-800 border border-slate-600 rounded-2xl px-5 py-4 text-white placeholder-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 transition-all">
-                    <input id="input1-title" type="text" placeholder="📝 Título (ej: Argentina vs México)" class="w-full sm:w-64 bg-slate-800 border border-slate-600 rounded-2xl px-5 py-4 text-white placeholder-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 transition-all">
+              <!-- Tabs de navegación -->
+              <div class="flex gap-2 bg-slate-800/60 rounded-3xl p-2 border border-slate-700/50">
+                <button id="tab-generator" class="tab-btn active flex-1 py-4 px-6 rounded-2xl font-bold text-lg text-white transition-all bg-gradient-to-r from-emerald-600 to-teal-600 shadow-lg">
+                  <div class="flex items-center justify-center gap-3">
+                    <span class="text-2xl">🚀</span>
+                    <span>Generar Enlaces</span>
                   </div>
-                  
-                  <button id="save-stream1" class="btn-primary text-white font-bold py-4 px-8 rounded-2xl shadow-lg transition-all flex items-center justify-center gap-3 w-full sm:w-auto">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <path d="M19 21H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>
-                    </svg>
-                    💾 Guardar Stream
-                  </button>
-                </div>
-              </div>
-
-              <!-- Stream 2 -->
-              <div class="space-y-4 pt-6 border-t border-slate-700">
-                <div class="flex items-center gap-3 mb-2">
-                  <div class="w-10 h-10 bg-gradient-to-br from-cyan-400 to-blue-500 text-slate-900 rounded-xl flex items-center justify-center font-black text-xl">2</div>
-                  <h3 class="text-lg font-bold text-cyan-300">Stream Secundario (Derecha/Abajo) <span class="text-slate-400 font-normal text-base">- Opcional</span></h3>
-                </div>
-                
-                <div class="space-y-3">
-                  <select id="stream2-select" class="w-full bg-slate-800 border-2 border-cyan-600/50 rounded-2xl px-5 py-4 text-white text-lg focus:outline-none focus:border-cyan-400 focus:ring-4 focus:ring-cyan-500/20 transition-all cursor-pointer">
-                    <option value="">-- 📺 Selecciona un stream guardado --</option>
-                  </select>
-                  
-                  <div class="flex flex-col sm:flex-row gap-3">
-                    <input id="input2" type="text" placeholder="🔗 O pega un nuevo enlace..." class="flex-1 bg-slate-800 border border-slate-600 rounded-2xl px-5 py-4 text-white placeholder-slate-400 focus:outline-none focus:border-cyan-500 focus:ring-4 focus:ring-cyan-500/20 transition-all">
-                    <input id="input2-title" type="text" placeholder="📝 Título (ej: Brasil vs España)" class="w-full sm:w-64 bg-slate-800 border border-slate-600 rounded-2xl px-5 py-4 text-white placeholder-slate-400 focus:outline-none focus:border-cyan-500 focus:ring-4 focus:ring-cyan-500/20 transition-all">
-                  </div>
-                  
-                  <button id="save-stream2" class="btn-primary text-white font-bold py-4 px-8 rounded-2xl shadow-lg transition-all flex items-center justify-center gap-3 w-full sm:w-auto">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <path d="M19 21H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>
-                    </svg>
-                    💾 Guardar Stream
-                  </button>
-                </div>
-              </div>
-
-              <!-- Nombre del Enlace -->
-              <div class="space-y-4 pt-4">
-                <div class="flex items-center gap-3 mb-2">
-                  <div class="w-10 h-10 bg-gradient-to-br from-pink-400 to-rose-500 text-slate-900 rounded-xl flex items-center justify-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                    </svg>
-                  </div>
-                  <h3 class="text-lg font-bold text-pink-300">Nombre del Enlace</h3>
-                </div>
-                <input id="link-name" type="text" placeholder="Ej: Partido de hoy - Canales 1 y 2" class="w-full bg-slate-800 border-2 border-pink-600/50 rounded-2xl px-5 py-4 text-white placeholder-slate-400 text-lg focus:outline-none focus:border-pink-400 focus:ring-4 focus:ring-pink-500/20 transition-all">
-              </div>
-
-              <!-- Expiración -->
-              <div class="space-y-4 pt-4">
-                <div class="flex items-center gap-3 mb-2">
-                  <div class="w-10 h-10 bg-gradient-to-br from-purple-400 to-pink-500 text-slate-900 rounded-xl flex items-center justify-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-                    </svg>
-                  </div>
-                  <h3 class="text-lg font-bold text-purple-300">Expiración del Enlace</h3>
-                </div>
-                <select id="expiration-select" class="w-full bg-slate-800 border-2 border-purple-600/50 rounded-2xl px-5 py-4 text-white text-lg focus:outline-none focus:border-purple-400 focus:ring-4 focus:ring-purple-500/20 transition-all cursor-pointer">
-                  <option value="1">⏱️ 1 Hora</option>
-                  <option value="6">⏱️ 6 Horas</option>
-                  <option value="24" selected>📅 1 Día</option>
-                  <option value="72">📅 3 Días</option>
-                  <option value="168">📅 7 Días</option>
-                </select>
-              </div>
-
-              <div class="flex gap-3">
-                <button id="btn-generate" class="flex-1 btn-gold text-slate-900 font-black text-xl py-6 px-8 rounded-3xl shadow-xl transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed pulse-glow" disabled>
-                  <svg xmlns="http://www.w3.org/2000/svg" class="w-9 h-9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-                  </svg>
-                  🚀 Generar Enlace y Guardar
                 </button>
-                <button id="btn-cancel-edit" class="px-6 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded-3xl shadow-lg transition-all hidden">
-                  ✖️ Cancelar
+                <button id="tab-tester" class="tab-btn flex-1 py-4 px-6 rounded-2xl font-bold text-lg text-slate-400 hover:text-white hover:bg-slate-700/50 transition-all">
+                  <div class="flex items-center justify-center gap-3">
+                    <span class="text-2xl">🔍</span>
+                    <span>Probar Streams</span>
+                  </div>
                 </button>
               </div>
+              
+              <!-- Pestaña Generador -->
+              <div id="panel-generator" class="space-y-6 mt-2">
+                <div class="bg-gradient-to-r from-emerald-900/50 to-teal-900/50 border border-emerald-500/40 rounded-3xl p-6 flex gap-4 card-hover">
+                  <div class="w-14 h-14 bg-gradient-to-br from-yellow-500/30 to-orange-500/30 rounded-2xl flex items-center justify-center shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-yellow-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="12" cy="12" r="10"/>
+                      <path d="M12 16v-4"/><path d="M12 8h.01"/>
+                    </svg>
+                  </div>
+                  <div class="flex-1">
+                    <h3 class="text-xl font-bold text-emerald-200 mb-2">Crea tus enlaces de partidos</h3>
+                    <p class="text-emerald-100/80 text-base">Selecciona streams guardados o pega nuevos enlaces para compartir</p>
+                  </div>
+                </div>
+
+                <!-- Stream 1 -->
+                <div class="space-y-4 bg-slate-800/40 rounded-3xl p-6 border border-slate-700/50 card-hover">
+                  <div class="flex items-center gap-4 mb-4">
+                    <div class="w-12 h-12 bg-gradient-to-br from-yellow-400 to-orange-500 text-slate-900 rounded-2xl flex items-center justify-center font-black text-2xl shadow-lg">1</div>
+                    <div>
+                      <h3 class="text-xl font-bold text-yellow-300">Stream Principal</h3>
+                      <p class="text-slate-400 text-sm">Izquierda / Arriba</p>
+                    </div>
+                  </div>
+                  
+                  <div class="space-y-4">
+                    <select id="stream1-select" class="w-full bg-slate-900/60 border-2 border-emerald-600/50 rounded-2xl px-6 py-5 text-white text-lg focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-500/20 transition-all cursor-pointer">
+                      <option value="">-- 📺 Selecciona un stream guardado --</option>
+                    </select>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <input id="input1" type="text" placeholder="🔗 O pega un nuevo enlace..." class="bg-slate-900/60 border border-slate-700 rounded-2xl px-6 py-5 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 transition-all">
+                      <input id="input1-title" type="text" placeholder="📝 Título (ej: Argentina vs México)" class="bg-slate-900/60 border border-slate-700 rounded-2xl px-6 py-5 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 transition-all">
+                    </div>
+                    
+                    <button id="save-stream1" class="btn-primary w-full text-white font-bold py-5 px-8 rounded-2xl shadow-xl transition-all flex items-center justify-center gap-3 text-lg">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M19 21H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>
+                      </svg>
+                      💾 Guardar Stream
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Stream 2 -->
+                <div class="space-y-4 bg-slate-800/40 rounded-3xl p-6 border border-slate-700/50 card-hover">
+                  <div class="flex items-center gap-4 mb-4">
+                    <div class="w-12 h-12 bg-gradient-to-br from-cyan-400 to-blue-500 text-slate-900 rounded-2xl flex items-center justify-center font-black text-2xl shadow-lg">2</div>
+                    <div>
+                      <h3 class="text-xl font-bold text-cyan-300">Stream Secundario</h3>
+                      <p class="text-slate-400 text-sm">Derecha / Abajo - Opcional</p>
+                    </div>
+                  </div>
+                  
+                  <div class="space-y-4">
+                    <select id="stream2-select" class="w-full bg-slate-900/60 border-2 border-cyan-600/50 rounded-2xl px-6 py-5 text-white text-lg focus:outline-none focus:border-cyan-400 focus:ring-4 focus:ring-cyan-500/20 transition-all cursor-pointer">
+                      <option value="">-- 📺 Selecciona un stream guardado --</option>
+                    </select>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <input id="input2" type="text" placeholder="🔗 O pega un nuevo enlace..." class="bg-slate-900/60 border border-slate-700 rounded-2xl px-6 py-5 text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 focus:ring-4 focus:ring-cyan-500/20 transition-all">
+                      <input id="input2-title" type="text" placeholder="📝 Título (ej: Brasil vs España)" class="bg-slate-900/60 border border-slate-700 rounded-2xl px-6 py-5 text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 focus:ring-4 focus:ring-cyan-500/20 transition-all">
+                    </div>
+                    
+                    <button id="save-stream2" class="btn-primary w-full text-white font-bold py-5 px-8 rounded-2xl shadow-xl transition-all flex items-center justify-center gap-3 text-lg">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M19 21H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>
+                      </svg>
+                      💾 Guardar Stream
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Nombre del Enlace -->
+                <div class="space-y-4 bg-slate-800/40 rounded-3xl p-6 border border-slate-700/50 card-hover">
+                  <div class="flex items-center gap-4 mb-4">
+                    <div class="w-12 h-12 bg-gradient-to-br from-pink-400 to-rose-500 text-slate-900 rounded-2xl flex items-center justify-center shadow-lg">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <h3 class="text-xl font-bold text-pink-300">Nombre del Enlace</h3>
+                      <p class="text-slate-400 text-sm">Para identificarlo en tu lista</p>
+                    </div>
+                  </div>
+                  <input id="link-name" type="text" placeholder="Ej: Partido de hoy - Canales 1 y 2" class="w-full bg-slate-900/60 border-2 border-pink-600/50 rounded-2xl px-6 py-5 text-white placeholder-slate-500 text-lg focus:outline-none focus:border-pink-400 focus:ring-4 focus:ring-pink-500/20 transition-all">
+                </div>
+
+                <!-- Expiración -->
+                <div class="space-y-4 bg-slate-800/40 rounded-3xl p-6 border border-slate-700/50 card-hover">
+                  <div class="flex items-center gap-4 mb-4">
+                    <div class="w-12 h-12 bg-gradient-to-br from-purple-400 to-pink-500 text-slate-900 rounded-2xl flex items-center justify-center shadow-lg">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <h3 class="text-xl font-bold text-purple-300">Expiración del Enlace</h3>
+                      <p class="text-slate-400 text-sm">¿Cuánto tiempo durará activo?</p>
+                    </div>
+                  </div>
+                  <select id="expiration-select" class="w-full bg-slate-900/60 border-2 border-purple-600/50 rounded-2xl px-6 py-5 text-white text-lg focus:outline-none focus:border-purple-400 focus:ring-4 focus:ring-purple-500/20 transition-all cursor-pointer">
+                    <option value="1">⏱️ 1 Hora</option>
+                    <option value="6">⏱️ 6 Horas</option>
+                    <option value="24" selected>📅 1 Día</option>
+                    <option value="72">📅 3 Días</option>
+                    <option value="168">📅 7 Días</option>
+                  </select>
+                </div>
+
+                <!-- Botones de Acción -->
+                <div class="flex flex-col sm:flex-row gap-4 pt-2">
+                  <button id="btn-generate" class="flex-1 btn-gold text-slate-900 font-black text-xl py-7 px-8 rounded-3xl shadow-2xl transition-all flex items-center justify-center gap-4 disabled:opacity-50 disabled:cursor-not-allowed pulse-glow" disabled>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-10 h-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                    </svg>
+                    <span>🚀 Generar Enlace y Guardar</span>
+                  </button>
+                  <button id="btn-cancel-edit" class="px-8 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded-3xl shadow-xl transition-all border-2 border-slate-600 hidden">
+                    ✖️ Cancelar
+                  </button>
+                </div>
 
               <!-- Resultado -->
               <div id="result-box" class="mt-6 p-8 bg-gradient-to-br from-yellow-900/30 to-orange-900/30 rounded-3xl border border-yellow-500/40 hidden">
@@ -245,14 +338,56 @@
                   </button>
                 </div>
               </div>
+              </div>
+              
+              <!-- Pestaña Tester -->
+              <div id="panel-tester" class="hidden mt-6">
+                <div class="bg-gradient-to-r from-blue-900/40 to-indigo-900/40 border border-blue-500/40 rounded-2xl p-6 flex gap-4">
+                  <div class="w-12 h-12 bg-blue-500/20 rounded-2xl flex items-center justify-center shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                    </svg>
+                  </div>
+                  <div class="flex-1">
+                    <h3 class="text-lg font-bold text-blue-200 mb-1">Prueba tus streams</h3>
+                    <p class="text-blue-100/80 text-sm">Verifica si tus URLs están funcionando</p>
+                  </div>
+                </div>
+                
+                <!-- Selector de stream para probar -->
+                <div class="space-y-4 mt-6">
+                  <div class="flex items-center gap-3 mb-2">
+                    <div class="w-10 h-10 bg-gradient-to-br from-purple-400 to-blue-500 text-slate-900 rounded-xl flex items-center justify-center font-black text-xl">▶️</div>
+                    <h3 class="text-lg font-bold text-purple-300">Seleccionar o pegar URL</h3>
+                  </div>
+                  
+                  <select id="tester-select" class="w-full bg-slate-800 border-2 border-purple-600/50 rounded-2xl px-5 py-4 text-white text-lg focus:outline-none focus:border-purple-400 focus:ring-4 focus:ring-purple-500/20 transition-all cursor-pointer">
+                    <option value="">-- 📺 Selecciona un stream guardado para probar --</option>
+                  </select>
+                  
+                  <input id="tester-input" type="text" placeholder="🔗 O pega directamente una URL para probar..." class="w-full bg-slate-800 border border-slate-600 rounded-2xl px-5 py-4 text-white placeholder-slate-400 focus:outline-none focus:border-purple-500 focus:ring-4 focus:ring-purple-500/20 transition-all">
+                  
+                  <button id="btn-test" class="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white font-black text-lg py-5 px-8 rounded-3xl shadow-xl transition-all flex items-center justify-center gap-3 mt-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <polygon points="5 3 19 12 5 21 5 3"/>
+                    </svg>
+                    ▶️ Probar Stream
+                  </button>
+                </div>
+                
+                <!-- Contenedor de prueba -->
+                <div id="tester-container" class="mt-8 aspect-video bg-black rounded-2xl border border-slate-700 overflow-hidden hidden">
+                </div>
+              </div>
               
             </div>
           </div>
         </div>
 
-        <!-- Columna Lateral - Mis Enlaces -->
-        <div class="lg:col-span-1">
-          <div class="bg-slate-900/90 backdrop-blur-xl rounded-3xl card-glow border border-blue-500/30 overflow-hidden sticky top-8">
+        <!-- Columna Lateral -->
+        <div class="lg:col-span-1 space-y-6">
+          <!-- Mis Enlaces Generados -->
+          <div class="bg-slate-900/90 backdrop-blur-xl rounded-3xl card-glow border border-blue-500/30 overflow-hidden">
             <div class="p-6 border-b border-blue-500/20 bg-gradient-to-r from-blue-900/40 to-indigo-900/40">
               <div class="flex items-center gap-3">
                 <div class="w-10 h-10 bg-blue-500/20 rounded-xl flex items-center justify-center">
@@ -266,13 +401,39 @@
                 </div>
               </div>
             </div>
-            <div id="links-container" class="p-4 max-h-[600px] overflow-y-auto space-y-3">
+            <div id="links-container" class="p-4 max-h-[350px] overflow-y-auto space-y-3">
               <div class="text-center text-slate-400 py-12">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-16 h-16 mx-auto mb-4 opacity-50" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                   <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
                   <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
                 </svg>
                 <p>No hay enlaces generados aún</p>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Mis Streams Guardados -->
+          <div class="bg-slate-900/90 backdrop-blur-xl rounded-3xl card-glow border border-emerald-500/30 overflow-hidden">
+            <div class="p-6 border-b border-emerald-500/20 bg-gradient-to-r from-emerald-900/40 to-teal-900/40">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-emerald-500/20 rounded-xl flex items-center justify-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M4 6h16M4 12h16M4 18h7"/>
+                  </svg>
+                </div>
+                <div>
+                  <h3 class="text-xl font-bold text-emerald-200">Mis Streams Guardados</h3>
+                  <p class="text-emerald-100/70 text-xs">Gestiona tus canales</p>
+                </div>
+              </div>
+            </div>
+            <div id="streams-container" class="p-4 max-h-[350px] overflow-y-auto space-y-3">
+              <div class="text-center text-slate-400 py-12">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-16 h-16 mx-auto mb-4 opacity-50" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M12 2c5.523 0 10 4.477 10 10s-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2z"/>
+                  <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                </svg>
+                <p>No hay streams guardados aún</p>
               </div>
             </div>
           </div>
@@ -318,7 +479,7 @@
        LÓGICA JAVASCRIPT
        ========================================== -->
   <script type="module">
-    import { getFirestore, collection, addDoc, getDocs, onSnapshot, query, orderBy, doc, updateDoc } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, getDocs, onSnapshot, query, orderBy, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
     
     document.addEventListener('DOMContentLoaded', async () => {
       const db = getFirestore();
@@ -351,6 +512,15 @@
       const videoContainer = document.getElementById('video-container');
       const btnFullscreen = document.getElementById('btn-fullscreen');
       const btnCancelEdit = document.getElementById('btn-cancel-edit');
+      const tabGenerator = document.getElementById('tab-generator');
+      const tabTester = document.getElementById('tab-tester');
+      const panelGenerator = document.getElementById('panel-generator');
+      const panelTester = document.getElementById('panel-tester');
+      const testerSelect = document.getElementById('tester-select');
+      const testerInput = document.getElementById('tester-input');
+      const btnTest = document.getElementById('btn-test');
+      const testerContainer = document.getElementById('tester-container');
+      const streamsContainer = document.getElementById('streams-container');
 
       // Bloquear ventanas emergentes
       window.open = function() { return null; };
@@ -372,8 +542,10 @@
           // Limpiar selects
           stream1Select.innerHTML = '<option value="">-- 📺 Selecciona un stream guardado --</option>';
           stream2Select.innerHTML = '<option value="">-- 📺 Selecciona un stream guardado --</option>';
+          testerSelect.innerHTML = '<option value="">-- 📺 Selecciona un stream guardado para probar --</option>';
           
           streams.forEach(stream => {
+            // Para generador
             const option1 = document.createElement('option');
             option1.value = stream.url;
             option1.textContent = `⚽ ${stream.title}`;
@@ -383,7 +555,40 @@
             option2.value = stream.url;
             option2.textContent = `⚽ ${stream.title}`;
             stream2Select.appendChild(option2);
+            
+            // Para tester
+            const testerOption = document.createElement('option');
+            testerOption.value = stream.url;
+            testerOption.textContent = `⚽ ${stream.title}`;
+            testerSelect.appendChild(testerOption);
           });
+          
+          // Actualizar lista lateral de streams
+          if (streams.length === 0) {
+            streamsContainer.innerHTML = `
+              <div class="text-center text-slate-400 py-12">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-16 h-16 mx-auto mb-4 opacity-50" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M12 2c5.523 0 10 4.477 10 10s-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2z"/>
+                  <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                </svg>
+                <p>No hay streams guardados aún</p>
+              </div>
+            `;
+          } else {
+            streamsContainer.innerHTML = streams.map(stream => `
+              <div class="bg-slate-800/80 rounded-xl border border-slate-700 p-3 hover:border-emerald-500/50 transition-all">
+                <div class="flex items-start justify-between gap-2">
+                  <div class="flex-1 min-w-0">
+                    <h4 class="text-sm font-bold text-emerald-200 truncate">${stream.title}</h4>
+                    <p class="text-xs text-slate-400 mt-1 truncate">${stream.url}</p>
+                  </div>
+                  <button onclick="deleteStream('${stream.id}')" class="shrink-0 w-9 h-9 bg-red-600 hover:bg-red-500 text-white rounded-xl flex items-center justify-center transition-all">
+                    🗑️
+                  </button>
+                </div>
+              </div>
+            `).join('');
+          }
         });
       };
       
@@ -427,19 +632,22 @@
                     }
                   </div>
                 </div>
-                <div class="flex gap-2">
-                  <button onclick="loadLinkForEdit('${link.id}')" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white py-2 px-3 rounded-xl text-xs font-bold transition-all">
-                    ✏️ Editar
+                <div class="flex flex-wrap gap-2">
+                  <button onclick="loadLinkForEdit('${link.id}')" class="flex-1 min-w-[70px] bg-blue-600 hover:bg-blue-500 text-white py-2 px-3 rounded-xl text-xs font-bold transition-all">
+                    ✏️
                   </button>
-                  <button onclick="navigator.clipboard.writeText('${link.url}').then(() => alert('Enlace copiado!'))" class="flex-1 bg-slate-700 hover:bg-slate-600 text-white py-2 px-3 rounded-xl text-xs font-medium transition-all">
-                    📋 Copiar
+                  <button onclick="navigator.clipboard.writeText('${link.url}').then(() => alert('Enlace copiado!'))" class="flex-1 min-w-[70px] bg-slate-700 hover:bg-slate-600 text-white py-2 px-3 rounded-xl text-xs font-medium transition-all">
+                    📋
                   </button>
-                  <a href="https://wa.me/?text=${encodeURIComponent('¡Mira los partidos del Mundial! 🏆 ' + link.url)}" target="_blank" class="flex-1 bg-green-600 hover:bg-green-500 text-white py-2 px-3 rounded-xl text-xs font-medium transition-all text-center">
-                    💬 WhatsApp
+                  <a href="https://wa.me/?text=${encodeURIComponent('¡Mira los partidos del Mundial! 🏆 ' + link.url)}" target="_blank" class="flex-1 min-w-[70px] bg-green-600 hover:bg-green-500 text-white py-2 px-3 rounded-xl text-xs font-medium transition-all text-center">
+                    💬
                   </a>
-                  <a href="${link.url}" class="flex-1 btn-gold text-slate-900 py-2 px-3 rounded-xl text-xs font-bold transition-all text-center ${isExpired ? 'opacity-50 pointer-events-none' : ''}">
-                    ▶️ Abrir
+                  <a href="${link.url}" class="flex-1 min-w-[70px] btn-gold text-slate-900 py-2 px-3 rounded-xl text-xs font-bold transition-all text-center ${isExpired ? 'opacity-50 pointer-events-none' : ''}">
+                    ▶️
                   </a>
+                  <button onclick="deleteLink('${link.id}')" class="w-full bg-red-600 hover:bg-red-500 text-white py-2 px-3 rounded-xl text-xs font-bold transition-all mt-2">
+                    🗑️ Eliminar
+                  </button>
                 </div>
               </div>
             `;
@@ -449,6 +657,80 @@
       
       await loadStreams();
       await loadLinks();
+      
+      // ------------------------------
+      // Funcionalidad de Pestañas
+      // ------------------------------
+      tabGenerator.addEventListener('click', () => {
+        // Activar pestaña de generador
+        tabGenerator.classList.add('bg-gradient-to-r', 'from-emerald-600', 'to-teal-600', 'shadow-lg');
+        tabGenerator.classList.remove('text-slate-400');
+        tabTester.classList.remove('bg-gradient-to-r', 'from-emerald-600', 'to-teal-600', 'text-white', 'shadow-lg');
+        tabTester.classList.add('text-slate-400');
+        panelGenerator.classList.remove('hidden');
+        panelTester.classList.add('hidden');
+      });
+      
+      tabTester.addEventListener('click', () => {
+        // Activar pestaña de tester
+        tabTester.classList.add('bg-gradient-to-r', 'from-emerald-600', 'to-teal-600', 'text-white', 'shadow-lg');
+        tabTester.classList.remove('text-slate-400');
+        tabGenerator.classList.remove('bg-gradient-to-r', 'from-emerald-600', 'to-teal-600', 'shadow-lg');
+        tabGenerator.classList.add('text-slate-400');
+        panelTester.classList.remove('hidden');
+        panelGenerator.classList.add('hidden');
+      });
+      
+      // ------------------------------
+      // Funcionalidad del Tester
+      // ------------------------------
+      testerSelect.addEventListener('change', () => {
+        if (testerSelect.value) {
+          testerInput.value = testerSelect.value;
+        }
+      });
+      
+      btnTest.addEventListener('click', () => {
+        const url = testerInput.value.trim() || testerSelect.value;
+        if (!url) {
+          alert('Por favor ingresa o selecciona una URL');
+          return;
+        }
+        
+        testerContainer.classList.remove('hidden');
+        testerContainer.innerHTML = `
+          <iframe src="${url}" class="w-full h-full" frameborder="0" allowfullscreen allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"></iframe>
+        `;
+      });
+      
+      // ------------------------------
+      // Funciones de Eliminación
+      // ------------------------------
+      window.deleteLink = async (linkId) => {
+        if (confirm('¿Estás seguro de que deseas eliminar este enlace?')) {
+          try {
+            const linkDoc = doc(db, 'generatedLinks', linkId);
+            await deleteDoc(linkDoc);
+            alert('Enlace eliminado correctamente');
+          } catch (e) {
+            console.error('Error eliminando enlace:', e);
+            alert('Error al eliminar el enlace');
+          }
+        }
+      };
+      
+      window.deleteStream = async (streamId) => {
+        if (confirm('¿Estás seguro de que deseas eliminar este stream?')) {
+          try {
+            const streamDoc = doc(db, 'streams', streamId);
+            await deleteDoc(streamDoc);
+            alert('Stream eliminado correctamente');
+          } catch (e) {
+            console.error('Error eliminando stream:', e);
+            alert('Error al eliminar el stream');
+          }
+        }
+      };
       
       // Función para cargar un enlace para editar
       window.loadLinkForEdit = async (linkId) => {
