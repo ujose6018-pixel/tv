@@ -6,6 +6,7 @@
   <title>TV Mundial 2026 - MultiStream</title>
   <link rel="icon" href="https://upload.wikimedia.org/wikipedia/commons/thumb/1/17/2026_FIFA_World_Cup_emblem.svg/1920px-2026_FIFA_World_Cup_emblem.svg.png" type="image/png">
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.15/dist/hls.min.js"></script>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
     import { getFirestore, collection, addDoc, getDocs, onSnapshot, query, orderBy, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
@@ -452,7 +453,31 @@
       <span id="text-fullscreen" class="hidden group-hover:inline font-bold text-lg pr-2">Pantalla Completa</span>
     </button>
 
+    <button id="btn-edit-streams" class="absolute top-4 right-4 z-50 bg-black/80 hover:bg-black/95 text-white p-4 rounded-2xl opacity-80 hover:opacity-100 transition-all backdrop-blur-xl shadow-2xl flex items-center gap-3 group">
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+      </svg>
+      <span class="hidden group-hover:inline font-bold text-lg pr-2">Cambiar Enlaces</span>
+    </button>
+
     <div id="video-container" class="w-full h-full flex flex-col md:flex-row">
+    </div>
+
+    <!-- Modal para editar URLs de streams en caliente -->
+    <div id="edit-streams-modal" class="hidden fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+      <div class="bg-slate-900 border border-emerald-500/40 rounded-3xl shadow-2xl max-w-lg w-full p-6 space-y-5">
+        <div class="flex items-center justify-between">
+          <h3 class="text-xl font-bold text-emerald-300 flex items-center gap-2">
+            🔄 Cambiar enlaces de stream
+          </h3>
+          <button id="btn-close-edit-modal" class="text-slate-400 hover:text-white text-2xl leading-none">✕</button>
+        </div>
+        <p class="text-slate-400 text-sm">Si un canal se cae, pega aquí el nuevo enlace y se actualizará al instante sin recargar la página.</p>
+        <div id="edit-streams-fields" class="space-y-4"></div>
+        <button id="btn-apply-stream-urls" class="w-full btn-primary text-white font-bold py-4 px-6 rounded-2xl shadow-xl transition-all">
+          ✅ Aplicar Cambios
+        </button>
+      </div>
     </div>
   </div>
 
@@ -510,6 +535,11 @@
       const linksContainer = document.getElementById('links-container');
       const videoContainer = document.getElementById('video-container');
       const btnFullscreen = document.getElementById('btn-fullscreen');
+      const btnEditStreams = document.getElementById('btn-edit-streams');
+      const editStreamsModal = document.getElementById('edit-streams-modal');
+      const editStreamsFields = document.getElementById('edit-streams-fields');
+      const btnCloseEditModal = document.getElementById('btn-close-edit-modal');
+      const btnApplyStreamUrls = document.getElementById('btn-apply-stream-urls');
       const btnCancelEdit = document.getElementById('btn-cancel-edit');
       const tabGenerator = document.getElementById('tab-generator');
       const tabTester = document.getElementById('tab-tester');
@@ -899,103 +929,395 @@
         adminView.classList.remove('hidden');
       }
 
-      // Función para cargar el visor
-      function loadViewer(streams) {
-        viewerView.classList.remove('hidden');
-        viewerView.classList.add('flex');
-        
-        const isSplit = streams.length === 2;
+      // ==========================================
+      // SISTEMA DE DUAL SOUND + STREAMS EDITABLES
+      // ==========================================
 
-        streams.forEach((url, index) => {
-          const div = document.createElement('div');
-          div.className = `relative ${isSplit ? 'w-full md:w-1/2 h-1/2 md:h-full border-b md:border-b-0 md:border-r border-slate-800' : 'w-full h-full'}`;
-          
-          // Estado inicial de audio
-          let isMuted = localStorage.getItem(`stream-${index}-muted`) === 'true';
-          
-          // Construir URL inicial
-          let initialUrl = url;
-          
-          // Intentar agregar parámetro de mute a URLs conocidas
-          if (isMuted) {
-            if (initialUrl.includes('youtube.com') || initialUrl.includes('youtube-nocookie.com') || initialUrl.includes('youtu.be')) {
-              initialUrl = initialUrl.replace('mute=0', 'mute=1');
-              if (!initialUrl.includes('mute=')) {
-                initialUrl += (initialUrl.includes('?') ? '&' : '?') + 'mute=1';
-              }
-            } else if (initialUrl.includes('twitch.tv')) {
-              initialUrl = initialUrl.replace('muted=false', 'muted=true');
-              if (!initialUrl.includes('muted=')) {
-                initialUrl += (initialUrl.includes('?') ? '&' : '?') + 'muted=true';
-              }
+      // Estado global de los streams activos en el visor (para poder editarlos en caliente)
+      let activeStreams = []; // [{ url, type, player, videoEl, hlsInstance, index }]
+
+      // Detecta el tipo de stream a partir de la URL
+      function detectStreamType(url) {
+        const u = url.toLowerCase();
+        if (u.includes('youtube.com') || u.includes('youtube-nocookie.com') || u.includes('youtu.be')) return 'youtube';
+        if (u.includes('twitch.tv')) return 'twitch';
+        if (/\.(m3u8|m3u|mp4|webm|ts)(\?|$)/.test(u)) return 'direct';
+        return 'iframe-other';
+      }
+
+      // Extrae el VIDEO_ID de una URL de YouTube (soporta embed, watch, youtu.be, live)
+      function extractYouTubeId(url) {
+        const patterns = [
+          /youtube(?:-nocookie)?\.com\/embed\/([a-zA-Z0-9_-]+)/,
+          /youtube\.com\/watch\?v=([a-zA-Z0-9_-]+)/,
+          /youtu\.be\/([a-zA-Z0-9_-]+)/,
+          /youtube\.com\/live\/([a-zA-Z0-9_-]+)/
+        ];
+        for (const p of patterns) {
+          const m = url.match(p);
+          if (m) return m[1];
+        }
+        return null;
+      }
+
+      // Extrae el canal de Twitch (soporta player.twitch.tv?channel=xxx o twitch.tv/xxx)
+      function extractTwitchChannel(url) {
+        let m = url.match(/channel=([a-zA-Z0-9_]+)/);
+        if (m) return { type: 'channel', value: m[1] };
+        m = url.match(/video=(\d+)/);
+        if (m) return { type: 'video', value: m[1] };
+        m = url.match(/twitch\.tv\/([a-zA-Z0-9_]+)\/?$/);
+        if (m) return { type: 'channel', value: m[1] };
+        return null;
+      }
+
+      // Carga un script externo una sola vez (evita duplicados)
+      const loadedScripts = {};
+      function loadScriptOnce(src) {
+        if (loadedScripts[src]) return loadedScripts[src];
+        loadedScripts[src] = new Promise((resolve, reject) => {
+          const s = document.createElement('script');
+          s.src = src;
+          s.onload = resolve;
+          s.onerror = reject;
+          document.head.appendChild(s);
+        });
+        return loadedScripts[src];
+      }
+
+      let ytApiPromise = null;
+      function loadYouTubeApi() {
+        if (window.YT && window.YT.Player) return Promise.resolve();
+        if (ytApiPromise) return ytApiPromise;
+        ytApiPromise = new Promise((resolve) => {
+          const prevCallback = window.onYouTubeIframeAPIReady;
+          window.onYouTubeIframeAPIReady = () => {
+            if (typeof prevCallback === 'function') prevCallback();
+            resolve();
+          };
+          loadScriptOnce('https://www.youtube.com/iframe_api');
+        });
+        return ytApiPromise;
+      }
+
+      function loadTwitchApi() {
+        return loadScriptOnce('https://player.twitch.tv/js/embed/v1.js');
+      }
+
+      // Aplica mute/unmute real a un stream activo según su tipo
+      function setStreamMuted(streamObj, muted) {
+        try {
+          if (streamObj.type === 'youtube' && streamObj.player && streamObj.player.mute) {
+            muted ? streamObj.player.mute() : streamObj.player.unMute();
+          } else if (streamObj.type === 'twitch' && streamObj.player && streamObj.player.setMuted) {
+            streamObj.player.setMuted(muted);
+          } else if (streamObj.type === 'direct' && streamObj.videoEl) {
+            streamObj.videoEl.muted = muted;
+            if (!muted) streamObj.videoEl.play().catch(() => {});
+          } else if (streamObj.type === 'iframe-other') {
+            // Único caso cross-origin sin API: recargar con parámetro de mute probable
+            const iframeEl = document.getElementById(`stream-iframe-${streamObj.index}`);
+            if (!iframeEl) return;
+            let baseUrl = streamObj.baseUrl || iframeEl.src;
+            let newUrl = baseUrl;
+            const sep = newUrl.includes('?') ? '&' : '?';
+            // Limpiar parámetros de mute previos conocidos
+            newUrl = newUrl.replace(/([?&])(mute|muted)=[^&]*/gi, '');
+            newUrl += `${newUrl.includes('?') ? '&' : sep}mute=${muted ? '1' : '0'}&muted=${muted ? 'true' : 'false'}`;
+            iframeEl.src = newUrl;
+          }
+        } catch (e) {
+          console.warn('No se pudo cambiar el audio de este stream:', e);
+        }
+      }
+
+      // Lee checkboxes y aplica el estado de audio combinado (Dual Sound)
+      function updateDualSound() {
+        activeStreams.forEach((streamObj) => {
+          const checkbox = document.getElementById(`sound-checkbox-${streamObj.index}`);
+          const muted = checkbox ? !checkbox.checked : true;
+          setStreamMuted(streamObj, muted);
+          localStorage.setItem(`stream-${streamObj.index}-sound-on`, checkbox ? checkbox.checked : false);
+          const pill = document.getElementById(`sound-pill-${streamObj.index}`);
+          if (pill) {
+            if (checkbox && checkbox.checked) {
+              pill.classList.add('bg-emerald-600/90');
+              pill.classList.remove('bg-black/80');
+            } else {
+              pill.classList.remove('bg-emerald-600/90');
+              pill.classList.add('bg-black/80');
             }
           }
-          
-          const iframe = document.createElement('iframe');
-          iframe.id = `stream-iframe-${index}`;
-          iframe.src = initialUrl;
-          iframe.className = 'absolute top-0 left-0 w-full h-full';
-          iframe.frameBorder = '0';
-          iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
-          iframe.allowFullscreen = true;
-          iframe.loading = 'lazy';
-          iframe.referrerPolicy = 'no-referrer';
-          
-          div.appendChild(iframe);
-
-          // Botón de audio (silencio/encendido)
-          const audioBtn = document.createElement('button');
-          audioBtn.id = `audio-btn-${index}`;
-          audioBtn.className = 'absolute bottom-6 right-6 z-40 bg-black/80 hover:bg-black/95 text-white p-5 rounded-3xl opacity-80 hover:opacity-100 transition-all backdrop-blur-xl shadow-2xl';
-          
-          const updateAudioIcon = () => {
-            if (isMuted) {
-              audioBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="w-10 h-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>`;
-              audioBtn.style.backgroundColor = 'rgba(239, 68, 68, 0.9)';
-            } else {
-              audioBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="w-10 h-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>`;
-              audioBtn.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
-            }
-          };
-          
-          updateAudioIcon();
-          
-          audioBtn.addEventListener('click', () => {
-            isMuted = !isMuted;
-            updateAudioIcon();
-            localStorage.setItem(`stream-${index}-muted`, isMuted);
-            
-            // Intentar actualizar la URL del iframe para cambiar el estado de mute
-            const iframeEl = document.getElementById(`stream-iframe-${index}`);
-            let newUrl = iframeEl.src;
-            
-            if (newUrl.includes('youtube.com') || newUrl.includes('youtube-nocookie.com') || newUrl.includes('youtu.be')) {
-              if (isMuted) {
-                newUrl = newUrl.replace('mute=0', 'mute=1');
-                if (!newUrl.includes('mute=')) {
-                  newUrl += (newUrl.includes('?') ? '&' : '?') + 'mute=1';
-                }
-              } else {
-                newUrl = newUrl.replace('mute=1', 'mute=0');
-              }
-              iframeEl.src = newUrl;
-            } else if (newUrl.includes('twitch.tv')) {
-              if (isMuted) {
-                newUrl = newUrl.replace('muted=false', 'muted=true');
-                if (!newUrl.includes('muted=')) {
-                  newUrl += (newUrl.includes('?') ? '&' : '?') + 'muted=true';
-                }
-              } else {
-                newUrl = newUrl.replace('muted=true', 'muted=false');
-              }
-              iframeEl.src = newUrl;
-            }
-          });
-          
-          div.appendChild(audioBtn);
-          videoContainer.appendChild(div);
         });
       }
+
+      // Crea el control "checkbox tipo chip" de Dual Sound para un stream
+      function createSoundToggle(index, totalStreams, defaultChecked) {
+        const wrapper = document.createElement('label');
+        wrapper.id = `sound-pill-${index}`;
+        wrapper.className = `absolute bottom-6 ${totalStreams === 2 ? (index === 0 ? 'right-6 md:right-6' : 'right-6') : 'right-6'} z-40 flex items-center gap-3 bg-black/80 hover:bg-black/95 text-white pl-5 pr-6 py-4 rounded-3xl opacity-90 hover:opacity-100 transition-all backdrop-blur-xl shadow-2xl cursor-pointer select-none border border-white/10`;
+
+        const iconSpan = document.createElement('span');
+        iconSpan.className = 'text-2xl';
+        iconSpan.textContent = defaultChecked ? '🔊' : '🔇';
+
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.id = `sound-checkbox-${index}`;
+        checkbox.checked = defaultChecked;
+        checkbox.className = 'w-6 h-6 rounded-lg accent-emerald-500 cursor-pointer';
+
+        const textSpan = document.createElement('span');
+        textSpan.className = 'font-bold text-base';
+        textSpan.textContent = 'Audio';
+
+        checkbox.addEventListener('change', () => {
+          iconSpan.textContent = checkbox.checked ? '🔊' : '🔇';
+          updateDualSound();
+        });
+
+        wrapper.appendChild(checkbox);
+        wrapper.appendChild(iconSpan);
+        wrapper.appendChild(textSpan);
+        return wrapper;
+      }
+
+      // Construye un <video> nativo con soporte HLS para streams directos (.m3u8/.mp4)
+      function buildDirectVideo(url, index, container) {
+        const video = document.createElement('video');
+        video.id = `stream-video-${index}`;
+        video.className = 'absolute top-0 left-0 w-full h-full bg-black';
+        video.autoplay = true;
+        video.playsInline = true;
+        video.muted = true; // arranca muteado por seguridad de autoplay; updateDualSound corrige
+        video.controls = false;
+
+        if (url.toLowerCase().includes('.m3u8') || url.toLowerCase().includes('.m3u')) {
+          if (window.Hls && window.Hls.isSupported()) {
+            const hls = new window.Hls();
+            hls.loadSource(url);
+            hls.attachMedia(video);
+            container.dataset.hlsAttached = 'true';
+            activeStreams.push({ url, type: 'direct', videoEl: video, hlsInstance: hls, index });
+          } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+            // Safari soporta HLS nativo
+            video.src = url;
+            activeStreams.push({ url, type: 'direct', videoEl: video, hlsInstance: null, index });
+          } else {
+            activeStreams.push({ url, type: 'direct', videoEl: video, hlsInstance: null, index });
+          }
+        } else {
+          video.src = url;
+          activeStreams.push({ url, type: 'direct', videoEl: video, hlsInstance: null, index });
+        }
+
+        container.appendChild(video);
+        video.play().catch(() => {});
+      }
+
+      // Construye el iframe + player para YouTube con control real de mute vía API
+      async function buildYouTubeStream(url, index, container) {
+        const videoId = extractYouTubeId(url);
+        const origin = window.location.origin;
+
+        const iframe = document.createElement('iframe');
+        iframe.id = `stream-iframe-${index}`;
+        iframe.className = 'absolute top-0 left-0 w-full h-full';
+        iframe.frameBorder = '0';
+        iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
+        iframe.allowFullscreen = true;
+        iframe.referrerPolicy = 'no-referrer';
+
+        if (videoId) {
+          iframe.src = `https://www.youtube.com/embed/${videoId}?enablejsapi=1&autoplay=1&mute=1&origin=${encodeURIComponent(origin)}`;
+        } else {
+          // Fallback: usar la URL tal cual, agregando enablejsapi si es posible
+          let fallback = url.includes('?') ? `${url}&enablejsapi=1&origin=${encodeURIComponent(origin)}` : `${url}?enablejsapi=1&origin=${encodeURIComponent(origin)}`;
+          iframe.src = fallback;
+        }
+
+        container.appendChild(iframe);
+
+        await loadYouTubeApi();
+        return new Promise((resolve) => {
+          const player = new window.YT.Player(iframe.id, {
+            events: {
+              onReady: (event) => {
+                activeStreams.push({ url, type: 'youtube', player: event.target, index });
+                resolve();
+              },
+              onError: () => resolve()
+            }
+          });
+        });
+      }
+
+      // Construye el player de Twitch con control real de mute vía SDK
+      async function buildTwitchStream(url, index, container) {
+        const channelInfo = extractTwitchChannel(url);
+        const playerDivId = `stream-twitch-${index}`;
+        const playerDiv = document.createElement('div');
+        playerDiv.id = playerDivId;
+        playerDiv.className = 'absolute top-0 left-0 w-full h-full';
+        container.appendChild(playerDiv);
+
+        await loadTwitchApi();
+        return new Promise((resolve) => {
+          if (!window.Twitch || !channelInfo) {
+            // Fallback a iframe crudo si no se puede parsear el canal
+            const iframe = document.createElement('iframe');
+            iframe.id = `stream-iframe-${index}`;
+            iframe.src = url;
+            iframe.className = 'absolute top-0 left-0 w-full h-full';
+            iframe.allowFullscreen = true;
+            playerDiv.replaceWith(iframe);
+            activeStreams.push({ url, type: 'iframe-other', baseUrl: url, index });
+            resolve();
+            return;
+          }
+          const options = {
+            width: '100%',
+            height: '100%',
+            parent: [window.location.hostname],
+            autoplay: true,
+            muted: true
+          };
+          if (channelInfo.type === 'channel') options.channel = channelInfo.value;
+          if (channelInfo.type === 'video') options.video = channelInfo.value;
+
+          const player = new window.Twitch.Player(playerDivId, options);
+          player.addEventListener(window.Twitch.Player.READY, () => {
+            activeStreams.push({ url, type: 'twitch', player, index });
+            resolve();
+          });
+        });
+      }
+
+      // Construye un iframe genérico para proveedores IPTV sin API/URL directa
+      function buildGenericIframe(url, index, container) {
+        const iframe = document.createElement('iframe');
+        iframe.id = `stream-iframe-${index}`;
+        iframe.src = url;
+        iframe.className = 'absolute top-0 left-0 w-full h-full';
+        iframe.frameBorder = '0';
+        iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
+        iframe.allowFullscreen = true;
+        iframe.loading = 'lazy';
+        iframe.referrerPolicy = 'no-referrer';
+        container.appendChild(iframe);
+        activeStreams.push({ url, type: 'iframe-other', baseUrl: url, index });
+
+        // Aviso discreto de que este proveedor puede no responder al control de audio
+        const warnIcon = document.createElement('span');
+        warnIcon.title = 'El control de audio depende del proveedor de este enlace';
+        warnIcon.className = 'absolute top-4 right-4 z-40 bg-yellow-500/90 text-slate-900 text-xs font-bold px-2 py-1 rounded-lg shadow-lg';
+        warnIcon.textContent = '⚠️ Audio según proveedor';
+        container.appendChild(warnIcon);
+      }
+
+      // Destruye lo que haya dentro de video-container y reinicia el estado
+      function teardownViewer() {
+        activeStreams.forEach((s) => {
+          try {
+            if (s.hlsInstance) s.hlsInstance.destroy();
+            if (s.player && s.player.destroy) s.player.destroy();
+          } catch (e) {}
+        });
+        activeStreams = [];
+        videoContainer.innerHTML = '';
+      }
+
+      // Función principal para cargar el visor con N streams (1 o 2)
+      async function loadViewer(streams) {
+        viewerView.classList.remove('hidden');
+        viewerView.classList.add('flex');
+        teardownViewer();
+
+        const isSplit = streams.length === 2;
+
+        for (let index = 0; index < streams.length; index++) {
+          const url = streams[index];
+          const div = document.createElement('div');
+          div.id = `stream-slot-${index}`;
+          div.className = `relative ${isSplit ? 'w-full md:w-1/2 h-1/2 md:h-full border-b md:border-b-0 md:border-r border-slate-800' : 'w-full h-full'}`;
+          videoContainer.appendChild(div);
+
+          const type = detectStreamType(url);
+
+          if (type === 'youtube') {
+            await buildYouTubeStream(url, index, div);
+          } else if (type === 'twitch') {
+            await buildTwitchStream(url, index, div);
+          } else if (type === 'direct') {
+            buildDirectVideo(url, index, div);
+          } else {
+            buildGenericIframe(url, index, div);
+          }
+
+          // Estado por defecto del checkbox de audio: stream 0 = ON, el resto = OFF
+          // (a menos que haya una preferencia guardada en localStorage)
+          const saved = localStorage.getItem(`stream-${index}-sound-on`);
+          const defaultChecked = saved !== null ? saved === 'true' : index === 0;
+
+          const soundToggle = createSoundToggle(index, streams.length, defaultChecked);
+          div.appendChild(soundToggle);
+
+          // Si solo hay un stream, forzar audio activado y deshabilitar el checkbox
+          if (streams.length === 1) {
+            const cb = soundToggle.querySelector('input[type="checkbox"]');
+            cb.checked = true;
+            cb.disabled = true;
+          }
+        }
+
+        updateDualSound();
+        renderEditStreamsModal(streams);
+      }
+
+      // ==========================================
+      // EDICIÓN DE URLs EN CALIENTE (si un canal se cae)
+      // ==========================================
+      function renderEditStreamsModal(streams) {
+        editStreamsFields.innerHTML = '';
+        streams.forEach((url, index) => {
+          const field = document.createElement('div');
+          field.className = 'space-y-2';
+          field.innerHTML = `
+            <label class="text-sm font-bold text-slate-300">Stream ${index + 1} ${index === 0 ? '(Izquierda/Arriba)' : '(Derecha/Abajo)'}</label>
+            <input id="edit-stream-input-${index}" type="text" value="${url.replace(/"/g, '&quot;')}" placeholder="🔗 Pega el nuevo enlace aquí..." class="w-full bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 text-white text-sm placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/30 transition-all">
+          `;
+          editStreamsFields.appendChild(field);
+        });
+      }
+
+      btnEditStreams.addEventListener('click', () => {
+        editStreamsModal.classList.remove('hidden');
+        editStreamsModal.classList.add('flex');
+      });
+
+      btnCloseEditModal.addEventListener('click', () => {
+        editStreamsModal.classList.add('hidden');
+        editStreamsModal.classList.remove('flex');
+      });
+
+      btnApplyStreamUrls.addEventListener('click', async () => {
+        const totalSlots = document.querySelectorAll('[id^="edit-stream-input-"]').length;
+        const updatedUrls = [];
+        for (let i = 0; i < totalSlots; i++) {
+          const input = document.getElementById(`edit-stream-input-${i}`);
+          if (input && input.value.trim()) updatedUrls.push(input.value.trim());
+        }
+
+        if (updatedUrls.length === 0) {
+          alert('Por favor ingresa al menos un enlace válido.');
+          return;
+        }
+
+        editStreamsModal.classList.add('hidden');
+        editStreamsModal.classList.remove('flex');
+
+        await loadViewer(updatedUrls);
+      });
 
       // Función para resetear el modo de edición
       const resetEditMode = () => {
